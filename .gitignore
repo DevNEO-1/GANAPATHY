@@ -1,0 +1,17 @@
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+.idea/
+
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pdb
+*.obj
+
+.DS_Store
+Thumbs.db
