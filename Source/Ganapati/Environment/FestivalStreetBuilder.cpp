@@ -8,6 +8,7 @@
 #include "Components/PointLightComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 
 AFestivalStreetBuilder::AFestivalStreetBuilder()
 {
@@ -422,12 +423,27 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 	SpawnParams.Owner = this;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	AGanapatiInteractable* Shrine = World->SpawnActor<AGanapatiInteractable>(
-		AGanapatiInteractable::StaticClass(),
-		ShrineLocation,
-		FRotator::ZeroRotator,
-		SpawnParams
-	);
+	TArray<AActor*> ExistingInteractables;
+	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), ExistingInteractables);
+
+	if (ExistingInteractables.Num() == 0)
+	{
+		AGanapatiInteractable* Shrine = World->SpawnActor<AGanapatiInteractable>(
+			AGanapatiInteractable::StaticClass(),
+			ShrineLocation,
+			FRotator::ZeroRotator,
+			SpawnParams
+		);
+
+		if (Shrine)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GANAPATI: Ganesh Pandal Shrine SPAWNED at %s"), *ShrineLocation.ToString());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("GANAPATI: FAILED to spawn Ganesh Pandal Shrine!"));
+		}
+	}
 
 	// ── 2. Spawn Training Dummy in Combat Courtyard ──
 	FVector DummyLocation = ActorOrigin + FVector(800.0f, 1900.0f, 50.0f);

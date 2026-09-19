@@ -131,11 +131,11 @@ protected:
 
 	/** Montage section name for holding the charge */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Charged")
-	FName ChargeLoopSection;
+	FName ChargeLoopSection = FName(TEXT("Charge"));
 
 	/** Montage section name for releasing the charged attack */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Charged")
-	FName ChargeAttackSection;
+	FName ChargeAttackSection = FName(TEXT("Attack"));
 
 	/** Base melee damage dealt per attack hit */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Damage", meta=(ClampMin=0.0f))

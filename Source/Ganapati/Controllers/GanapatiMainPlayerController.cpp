@@ -200,6 +200,13 @@ void AGanapatiMainPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UE_LOG(LogTemp, Warning, TEXT("=== GANAPATI: AGanapatiMainPlayerController::BeginPlay ==="));
+	UE_LOG(LogTemp, Warning, TEXT("  Controller Class: %s"), *GetClass()->GetName());
+	if (GetPawn())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("  Possessed Pawn: %s (Class: %s)"), *GetPawn()->GetName(), *GetPawn()->GetClass()->GetName());
+	}
+
 	// Create input system programmatically if not already created
 	CreateInputActionsAndMappingContext();
 
@@ -210,6 +217,7 @@ void AGanapatiMainPlayerController::BeginPlay()
 		{
 			Subsystem->ClearAllMappings();
 			Subsystem->AddMappingContext(IMC_Ganapati, 100);
+			UE_LOG(LogTemp, Warning, TEXT("  IMC_Ganapati REGISTERED with priority 100"));
 		}
 	}
 }
@@ -383,6 +391,7 @@ void AGanapatiMainPlayerController::HandleLightAttackCompleted()
 
 void AGanapatiMainPlayerController::HandleChargedAttackStarted()
 {
+	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: HandleChargedAttackStarted (RMB Pressed)"));
 	if (AGanapatiPlayerCharacter* Char = GetGanapatiCharacter())
 	{
 		Char->DoChargedAttackStart();
@@ -391,6 +400,7 @@ void AGanapatiMainPlayerController::HandleChargedAttackStarted()
 
 void AGanapatiMainPlayerController::HandleChargedAttackCompleted()
 {
+	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: HandleChargedAttackCompleted (RMB Released)"));
 	if (AGanapatiPlayerCharacter* Char = GetGanapatiCharacter())
 	{
 		Char->DoChargedAttackEnd();
@@ -415,6 +425,7 @@ void AGanapatiMainPlayerController::HandleCameraSideToggle()
 
 void AGanapatiMainPlayerController::HandleInteract()
 {
+	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: HandleInteract (E Pressed)"));
 	if (AGanapatiPlayerCharacter* Char = GetGanapatiCharacter())
 	{
 		Char->DoInteract();

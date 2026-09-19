@@ -6,6 +6,7 @@
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h"
 #include "CollisionQueryParams.h"
+#include "Kismet/GameplayStatics.h"
 
 UGanapatiInteractionComponent::UGanapatiInteractionComponent()
 {
@@ -16,6 +17,33 @@ UGanapatiInteractionComponent::UGanapatiInteractionComponent()
 void UGanapatiInteractionComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Ensure the Ganesh Pandal shrine interactable exists in the world
+	if (UWorld* World = GetWorld())
+	{
+		TArray<AActor*> ExistingInteractables;
+		UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), ExistingInteractables);
+
+		if (ExistingInteractables.Num() == 0)
+		{
+			// The Ganesh Pandal altar is located at (2250, 0, 90) at the end of the festival street
+			const FVector PandalShrineLocation(2250.0f, 0.0f, 90.0f);
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+			AGanapatiInteractable* Shrine = World->SpawnActor<AGanapatiInteractable>(
+				AGanapatiInteractable::StaticClass(),
+				PandalShrineLocation,
+				FRotator::ZeroRotator,
+				SpawnParams
+			);
+
+			if (Shrine)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("GANAPATI: GanapatiInteractionComponent spawned Ganesh Pandal Shrine at %s"), *PandalShrineLocation.ToString());
+			}
+		}
+	}
 }
 
 void UGanapatiInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -33,8 +61,6 @@ void UGanapatiInteractionComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		}
 	}
 }
-
-#include "Kismet/GameplayStatics.h"
 
 void UGanapatiInteractionComponent::UpdateFocusedInteractable()
 {
@@ -82,6 +108,9 @@ void UGanapatiInteractionComponent::UpdateFocusedInteractable()
 
 bool UGanapatiInteractionComponent::TryInteract()
 {
+	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: TryInteract() — FocusedInteractable=%s"),
+		FocusedInteractable ? *FocusedInteractable->GetName() : TEXT("NULL"));
+
 	if (!FocusedInteractable)
 	{
 		return false;

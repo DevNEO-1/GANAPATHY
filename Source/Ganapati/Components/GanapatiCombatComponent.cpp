@@ -18,8 +18,8 @@ UGanapatiCombatComponent::UGanapatiCombatComponent()
 	ComboSectionNames.Add(FName(TEXT("Attack2")));
 	ComboSectionNames.Add(FName(TEXT("Attack3")));
 
-	ChargeLoopSection = FName(TEXT("ChargeLoop"));
-	ChargeAttackSection = FName(TEXT("ChargeAttack"));
+	ChargeLoopSection = FName(TEXT("Charge"));
+	ChargeAttackSection = FName(TEXT("Attack"));
 
 	// Auto-load combat animation montages from project assets
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> ComboMontageFinder(
@@ -90,6 +90,9 @@ void UGanapatiCombatComponent::StartChargedAttack()
 		return;
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: StartChargedAttack() — bIsAttacking=%d, ChargedAttackMontage=%s"),
+		bIsAttacking, ChargedAttackMontage ? *ChargedAttackMontage->GetName() : TEXT("NULL"));
+
 	bIsChargingAttack = true;
 	bHasReleasedChargedAttack = false;
 	bHasLoopedChargedAttack = false;
@@ -108,6 +111,8 @@ void UGanapatiCombatComponent::StopChargedAttack()
 	bIsChargingAttack = false;
 	bHasReleasedChargedAttack = true;
 
+	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: StopChargedAttack() — jumping to section '%s'"), *ChargeAttackSection.ToString());
+
 	// Jump directly to the release heavy strike section if montage is playing
 	if (USkeletalMeshComponent* Mesh = GetOwnerMesh())
 	{
@@ -121,8 +126,8 @@ void UGanapatiCombatComponent::StopChargedAttack()
 		}
 	}
 
-	// Direct trace fallback: ensures heavy strike always executes even if montage is not playing
-	DoAttackTrace(WeaponSocketName);
+	// Montage wasn't playing — reset attack state cleanly
+	// The AnimNotify_DoAttackTrace in the montage is responsible for the trace
 	bIsAttacking = false;
 	OnAttackStateChanged.Broadcast(false);
 }
@@ -355,7 +360,6 @@ void UGanapatiCombatComponent::CheckChargedAttack()
 				}
 			}
 		}
-		DoAttackTrace(WeaponSocketName);
 	}
 	else
 	{

@@ -27,4 +27,7 @@ class GANAPATI_API AGanapatiMainGameMode : public AGameModeBase
 
 public:
 	AGanapatiMainGameMode();
+
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 };
