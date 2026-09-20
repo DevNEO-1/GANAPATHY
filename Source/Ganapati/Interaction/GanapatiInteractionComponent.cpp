@@ -26,8 +26,8 @@ void UGanapatiInteractionComponent::BeginPlay()
 
 		if (ExistingInteractables.Num() == 0)
 		{
-			// The Ganesh Pandal altar is located at (2250, 0, 90) at the end of the festival street
-			const FVector PandalShrineLocation(2250.0f, 0.0f, 90.0f);
+			// The Ganesh Pandal altar is located at (2300, 0, 90) at the end of the festival street
+			const FVector PandalShrineLocation(2300.0f, 0.0f, 90.0f);
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 

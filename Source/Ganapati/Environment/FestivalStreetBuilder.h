@@ -8,6 +8,7 @@
 
 class UStaticMeshComponent;
 class UPointLightComponent;
+class UMaterialInstanceDynamic;
 class AGanapatiInteractable;
 class AGanapatiNPC;
 class AGanapatiTrainingDummy;
@@ -59,6 +60,24 @@ protected:
 	/** Builds the grand Ganesh Pandal temple pavilion */
 	void BuildGaneshPandal();
 
+	/** Initializes procedural festival materials (Marigold, Sindoor, Gold, Marble, Diya glow) */
+	void InitializeFestivalMaterials();
+
+	/** Builds the sacred Ganesha idol and altar inside the sanctum */
+	void BuildGaneshaShrine(const FVector& PandalCenter);
+
+	/** Builds celebratory Diyas (terracotta oil lamps) with glowing flames */
+	void BuildFestivalDiyas(const FVector& PandalCenter);
+
+	/** Builds traditional Rangoli floor mandalas */
+	void BuildFestivalRangolis(const FVector& PandalCenter);
+
+	/** Builds marigold flower garlands, mango leaf torans, and cloth banners */
+	void BuildGarlandsAndBanners(const FVector& PandalCenter);
+
+	/** Builds the open festival aerial plaza for anti-gravity showcase */
+	void BuildAntiGravityDemonstrationArea();
+
 	/** Builds festive street lantern lights */
 	void BuildFestivalLighting();
 
@@ -108,6 +127,12 @@ protected:
 	TObjectPtr<UStaticMesh> QuarterCylinderMesh;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> PlaneMesh;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> CircularBandMesh;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> PrototypeGridMaterial;
 
 	UPROPERTY(Transient)
@@ -115,6 +140,31 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> GrayMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> FlatColorMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> GlowMaterial;
+
+	// Dynamic Festival Materials
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> MarigoldMat;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> SindoorMat;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> GoldMat;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> WhiteMat;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> GreenMat;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> DiyaGlowMat;
 
 	/** Number of wandering NPCs to spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Spawning", meta=(ClampMin=1, ClampMax=20))

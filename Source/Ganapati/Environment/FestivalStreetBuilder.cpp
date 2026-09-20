@@ -6,6 +6,7 @@
 #include "Enemies/GanapatiTrainingDummy.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -53,6 +54,20 @@ AFestivalStreetBuilder::AFestivalStreetBuilder()
 		QuarterCylinderMesh = QCylFinder.Object;
 	}
 
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneFinder(
+		TEXT("/Game/LevelPrototyping/Meshes/SM_Plane.SM_Plane"));
+	if (PlaneFinder.Succeeded())
+	{
+		PlaneMesh = PlaneFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CircBandFinder(
+		TEXT("/Game/LevelPrototyping/Interactable/JumpPad/Assets/Meshes/SM_CircularBand.SM_CircularBand"));
+	if (CircBandFinder.Succeeded())
+	{
+		CircularBandMesh = CircBandFinder.Object;
+	}
+
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MatFinder(
 		TEXT("/Game/LevelPrototyping/Materials/M_PrototypeGrid.M_PrototypeGrid"));
 	if (MatFinder.Succeeded())
@@ -73,6 +88,20 @@ AFestivalStreetBuilder::AFestivalStreetBuilder()
 	{
 		GrayMaterial = GrayMatFinder.Object;
 	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FlatColorFinder(
+		TEXT("/Game/LevelPrototyping/Materials/M_FlatCol.M_FlatCol"));
+	if (FlatColorFinder.Succeeded())
+	{
+		FlatColorMaterial = FlatColorFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GlowFinder(
+		TEXT("/Game/LevelPrototyping/Interactable/JumpPad/Assets/Materials/M_SimpleGlow.M_SimpleGlow"));
+	if (GlowFinder.Succeeded())
+	{
+		GlowMaterial = GlowFinder.Object;
+	}
 }
 
 void AFestivalStreetBuilder::BeginPlay()
@@ -81,6 +110,7 @@ void AFestivalStreetBuilder::BeginPlay()
 
 	if (!bHasConstructed)
 	{
+		InitializeFestivalMaterials();
 		BuildFestivalEnvironment();
 		PopulateWorldActors();
 		bHasConstructed = true;
@@ -170,6 +200,7 @@ void AFestivalStreetBuilder::BuildFestivalEnvironment()
 	BuildGaneshPandal();
 	BuildFestivalLighting();
 	BuildCombatAndParkourCourtyard();
+	BuildAntiGravityDemonstrationArea();
 }
 
 void AFestivalStreetBuilder::BuildEntrancePlaza()
@@ -748,6 +779,66 @@ void AFestivalStreetBuilder::BuildBazaarStalls()
 	CreateMeshPiece(TEXT("Stall_Diya_S_Canopy"), CubeMesh, FVector(250.0f, 580.0f, 235.0f), FRotator(-10.0f, 0.0f, 0.0f), FVector(3.0f, 1.8f, 0.12f));
 }
 
+void AFestivalStreetBuilder::InitializeFestivalMaterials()
+{
+	if (FlatColorMaterial)
+	{
+		MarigoldMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_Marigold"));
+		if (MarigoldMat)
+		{
+			MarigoldMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(1.0f, 0.42f, 0.02f));
+			MarigoldMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(1.0f, 0.42f, 0.02f));
+		}
+
+		SindoorMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_Sindoor"));
+		if (SindoorMat)
+		{
+			SindoorMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.85f, 0.08f, 0.08f));
+			SindoorMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(0.85f, 0.08f, 0.08f));
+		}
+
+		GoldMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_Gold"));
+		if (GoldMat)
+		{
+			GoldMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.98f, 0.78f, 0.15f));
+			GoldMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(0.98f, 0.78f, 0.15f));
+		}
+
+		WhiteMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_White"));
+		if (WhiteMat)
+		{
+			WhiteMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.94f, 0.93f, 0.90f));
+			WhiteMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(0.94f, 0.93f, 0.90f));
+		}
+
+		GreenMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_Green"));
+		if (GreenMat)
+		{
+			GreenMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.08f, 0.52f, 0.18f));
+			GreenMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(0.08f, 0.52f, 0.18f));
+		}
+	}
+
+	if (GlowMaterial)
+	{
+		DiyaGlowMat = UMaterialInstanceDynamic::Create(GlowMaterial, this, TEXT("Mat_DiyaGlow"));
+		if (DiyaGlowMat)
+		{
+			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(1.0f, 0.70f, 0.12f));
+			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("EmissiveColor")), FLinearColor(1.0f, 0.70f, 0.12f) * 16.0f);
+		}
+	}
+	else if (FlatColorMaterial)
+	{
+		DiyaGlowMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_DiyaGlow"));
+		if (DiyaGlowMat)
+		{
+			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(1.0f, 0.85f, 0.25f));
+			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(1.0f, 0.85f, 0.25f));
+		}
+	}
+}
+
 void AFestivalStreetBuilder::BuildGaneshPandal()
 {
 	// ── Grand Ganesh Pandal Temple Sanctuary ──
@@ -756,126 +847,526 @@ void AFestivalStreetBuilder::BuildGaneshPandal()
 
 	// 1. Grand Elevated Temple Dais / Mandap Platform
 	CreateMeshPiece(
-		TEXT("Pandal_Platform"),
+		TEXT("Pandal_MainPlatform"),
 		CubeMesh,
 		PandalCenter + FVector(0.0f, 0.0f, 40.0f),
 		FRotator::ZeroRotator,
-		FVector(13.0f, 15.0f, 0.8f),
+		FVector(18.0f, 20.0f, 0.8f),
 		true,
-		GrayMaterial
+		DarkMaterial
 	);
 
-	// 2. Ceremonial Approach Steps / Ramp
-	if (RampMesh)
+	// Upper Marble Sanctum Dais
+	CreateMeshPiece(
+		TEXT("Pandal_UpperPlatform"),
+		CubeMesh,
+		PandalCenter + FVector(120.0f, 0.0f, 85.0f),
+		FRotator::ZeroRotator,
+		FVector(13.5f, 15.5f, 0.25f),
+		true,
+		WhiteMat ? WhiteMat : GrayMaterial
+	);
+
+	// 2. Ceremonial Approach Steps (Grand multi-tiered entrance)
+	for (int32 StepIdx = 0; StepIdx < 4; ++StepIdx)
 	{
+		float StepX = 1260.0f + (StepIdx * 50.0f);
+		float StepZ = 15.0f + (StepIdx * 18.0f);
+		float StepDepth = 3.2f - (StepIdx * 0.4f);
 		CreateMeshPiece(
-			TEXT("Pandal_Ramp"),
-			RampMesh,
-			PandalCenter + FVector(-750.0f, 0.0f, 0.0f),
-			FRotator(0.0f, 0.0f, 0.0f),
-			FVector(3.5f, 7.0f, 0.8f)
+			FString::Printf(TEXT("Pandal_Step_%d"), StepIdx),
+			CubeMesh,
+			FVector(StepX, 0.0f, StepZ),
+			FRotator::ZeroRotator,
+			FVector(StepDepth, 9.0f, 0.35f),
+			true,
+			DarkMaterial
 		);
 	}
 
-	// 3. Four Grand Carved Temple Pillars
-	const float PillarOffsetX = 480.0f;
-	const float PillarOffsetY = 580.0f;
-	const float PillarHeight = 6.5f;
+	// 3. Sacred Ceremonial Red & Gold Carpet Runner (Leading from Chowk to Altar)
+	CreateMeshPiece(
+		TEXT("Pandal_Carpet_Main"),
+		CubeMesh,
+		FVector(1500.0f, 0.0f, 82.0f),
+		FRotator::ZeroRotator,
+		FVector(15.0f, 2.6f, 0.06f),
+		false,
+		SindoorMat ? SindoorMat : GrayMaterial
+	);
+	// Carpet Gold Borders
+	CreateMeshPiece(
+		TEXT("Pandal_Carpet_Border_L"),
+		CubeMesh,
+		FVector(1500.0f, -135.0f, 83.0f),
+		FRotator::ZeroRotator,
+		FVector(15.0f, 0.18f, 0.07f),
+		false,
+		GoldMat ? GoldMat : GrayMaterial
+	);
+	CreateMeshPiece(
+		TEXT("Pandal_Carpet_Border_R"),
+		CubeMesh,
+		FVector(1500.0f, 135.0f, 83.0f),
+		FRotator::ZeroRotator,
+		FVector(15.0f, 0.18f, 0.07f),
+		false,
+		GoldMat ? GoldMat : GrayMaterial
+	);
 
-	const FVector PillarPositions[] = {
-		PandalCenter + FVector(-PillarOffsetX, -PillarOffsetY, 0.0f),
-		PandalCenter + FVector(-PillarOffsetX,  PillarOffsetY, 0.0f),
-		PandalCenter + FVector( PillarOffsetX, -PillarOffsetY, 0.0f),
-		PandalCenter + FVector( PillarOffsetX,  PillarOffsetY, 0.0f)
+	// 4. Eight Grand Carved Temple Pillars (4 Front Portico + 4 Inner Sanctum)
+	const FVector PillarLocations[] = {
+		// Portico (Entrance)
+		FVector(1420.0f, -680.0f, 0.0f),
+		FVector(1420.0f, -260.0f, 0.0f),
+		FVector(1420.0f,  260.0f, 0.0f),
+		FVector(1420.0f,  680.0f, 0.0f),
+		// Inner Sanctum
+		FVector(2050.0f, -560.0f, 0.0f),
+		FVector(2050.0f,  560.0f, 0.0f),
+		FVector(2680.0f, -560.0f, 0.0f),
+		FVector(2680.0f,  560.0f, 0.0f)
 	};
 
-	for (int32 i = 0; i < 4; ++i)
+	const float PillarHeight = 6.6f;
+	for (int32 i = 0; i < UE_ARRAY_COUNT(PillarLocations); ++i)
 	{
-		const FVector& Pos = PillarPositions[i];
+		const FVector& Pos = PillarLocations[i];
 
-		// Pillar Base Plinth
+		// Base Plinth
 		if (ChamferCubeMesh)
 		{
-			CreateMeshPiece(FString::Printf(TEXT("Pandal_PillarBase_%d"), i), ChamferCubeMesh, Pos + FVector(0.0f, 0.0f, 50.0f), FRotator::ZeroRotator, FVector(1.8f, 1.8f, 0.6f));
+			CreateMeshPiece(FString::Printf(TEXT("Pandal_PillarBase_%d"), i), ChamferCubeMesh, Pos + FVector(0.0f, 0.0f, 50.0f), FRotator::ZeroRotator, FVector(1.9f, 1.9f, 0.7f), true, DarkMaterial);
 		}
-		// Main Pillar Shaft
-		CreateMeshPiece(FString::Printf(TEXT("Pandal_PillarShaft_%d"), i), CylinderMesh, Pos + FVector(0.0f, 0.0f, 365.0f), FRotator::ZeroRotator, FVector(1.4f, 1.4f, PillarHeight));
+
+		// Main Pillar Shaft (White marble / carved stone)
+		CreateMeshPiece(FString::Printf(TEXT("Pandal_PillarShaft_%d"), i), CylinderMesh, Pos + FVector(0.0f, 0.0f, 380.0f), FRotator::ZeroRotator, FVector(1.4f, 1.4f, PillarHeight), true, WhiteMat ? WhiteMat : GrayMaterial);
+
+		// Mid-Height Marigold Floral Ring
+		CreateMeshPiece(FString::Printf(TEXT("Pandal_PillarGarland_%d"), i), CylinderMesh, Pos + FVector(0.0f, 0.0f, 320.0f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 0.25f), false, MarigoldMat ? MarigoldMat : GrayMaterial);
+
+		// Stepped Capital Bracket (Golden brass trim)
+		if (ChamferCubeMesh)
+		{
+			CreateMeshPiece(FString::Printf(TEXT("Pandal_PillarCapital_%d"), i), ChamferCubeMesh, Pos + FVector(0.0f, 0.0f, 700.0f), FRotator::ZeroRotator, FVector(1.8f, 1.8f, 0.5f), true, GoldMat ? GoldMat : GrayMaterial);
+		}
 	}
 
-	// 4. Grand Mandap Canopy / Temple Roof
-	CreateMeshPiece(
-		TEXT("Pandal_Roof_Main"),
-		CubeMesh,
-		PandalCenter + FVector(0.0f, 0.0f, 700.0f),
-		FRotator::ZeroRotator,
-		FVector(14.5f, 16.5f, 0.9f),
-		true,
-		GrayMaterial
-	);
+	// 5. Grand Mandap Canopy / Multi-Tiered Temple Shikhara Roof
+	// Tie Beams connecting columns
+	CreateMeshPiece(TEXT("Pandal_Beam_Front"), CubeMesh, FVector(1420.0f, 0.0f, 705.0f), FRotator::ZeroRotator, FVector(1.2f, 15.0f, 0.7f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Pandal_Beam_Back"), CubeMesh, FVector(2680.0f, 0.0f, 705.0f), FRotator::ZeroRotator, FVector(1.2f, 15.0f, 0.7f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Pandal_Beam_Left"), CubeMesh, FVector(2050.0f, -560.0f, 705.0f), FRotator::ZeroRotator, FVector(13.0f, 1.2f, 0.7f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Pandal_Beam_Right"), CubeMesh, FVector(2050.0f, 560.0f, 705.0f), FRotator::ZeroRotator, FVector(13.0f, 1.2f, 0.7f), true, DarkMaterial);
 
-	// Eaves overhang band
-	CreateMeshPiece(
-		TEXT("Pandal_Roof_Eaves"),
-		CubeMesh,
-		PandalCenter + FVector(0.0f, 0.0f, 650.0f),
-		FRotator::ZeroRotator,
-		FVector(15.2f, 17.2f, 0.3f),
-		true,
-		DarkMaterial
-	);
+	// Tier 1: Overhanging Lower Eaves
+	CreateMeshPiece(TEXT("Pandal_Roof_Tier1"), CubeMesh, PandalCenter + FVector(0.0f, 0.0f, 740.0f), FRotator::ZeroRotator, FVector(19.0f, 21.0f, 0.6f), true, DarkMaterial);
+	// Eaves Saffron Decorative Trim
+	CreateMeshPiece(TEXT("Pandal_Roof_Trim"), CubeMesh, PandalCenter + FVector(0.0f, 0.0f, 715.0f), FRotator::ZeroRotator, FVector(19.6f, 21.6f, 0.2f), false, GoldMat ? GoldMat : GrayMaterial);
 
-	// 5. Sacred Central Altar / Shrine Pedestal (Garbhagriha)
-	CreateMeshPiece(
-		TEXT("Ganesh_Altar_Base"),
-		CylinderMesh,
-		PandalCenter + FVector(150.0f, 0.0f, 110.0f),
-		FRotator::ZeroRotator,
-		FVector(3.2f, 3.2f, 0.6f),
-		true,
-		DarkMaterial
-	);
-	CreateMeshPiece(
-		TEXT("Ganesh_Altar_Tier2"),
-		CylinderMesh,
-		PandalCenter + FVector(150.0f, 0.0f, 150.0f),
-		FRotator::ZeroRotator,
-		FVector(2.4f, 2.4f, 0.4f),
-		true,
-		GrayMaterial
-	);
+	// Tier 2: Stepped Saffron Pyramid Tier (Mandap superstructure)
+	CreateMeshPiece(TEXT("Pandal_Roof_Tier2"), CubeMesh, PandalCenter + FVector(0.0f, 0.0f, 810.0f), FRotator::ZeroRotator, FVector(14.0f, 16.0f, 1.1f), true, MarigoldMat ? MarigoldMat : GrayMaterial);
 
-	// Symbolic Divine Ganesha Idol Representation
-	CreateMeshPiece(
-		TEXT("Ganesh_Idol_Body"),
-		CylinderMesh,
-		PandalCenter + FVector(150.0f, 0.0f, 230.0f),
-		FRotator::ZeroRotator,
-		FVector(1.6f, 1.6f, 1.2f)
-	);
-	CreateMeshPiece(
-		TEXT("Ganesh_Idol_Head"),
-		CylinderMesh,
-		PandalCenter + FVector(150.0f, 0.0f, 320.0f),
-		FRotator(0.0f, 0.0f, 90.0f),
-		FVector(1.1f, 1.1f, 0.9f)
-	);
-	// Golden Crown (Mukut)
-	CreateMeshPiece(
-		TEXT("Ganesh_Idol_Crown"),
-		CylinderMesh,
-		PandalCenter + FVector(150.0f, 0.0f, 390.0f),
-		FRotator::ZeroRotator,
-		FVector(0.75f, 0.75f, 0.8f)
-	);
+	// Tier 3: Upper Shikhara Pavilion
+	CreateMeshPiece(TEXT("Pandal_Roof_Tier3"), CubeMesh, PandalCenter + FVector(0.0f, 0.0f, 910.0f), FRotator::ZeroRotator, FVector(9.0f, 11.0f, 1.4f), true, SindoorMat ? SindoorMat : GrayMaterial);
 
-	// Sacred Back Wall (Prabhavali Arch Backdrop)
+	// Central Golden Kalash Pinnacle (Temple Stupa Spire)
+	CreateMeshPiece(TEXT("Pandal_Kalash_Base"), CylinderMesh, PandalCenter + FVector(0.0f, 0.0f, 1010.0f), FRotator::ZeroRotator, FVector(3.2f, 3.2f, 0.8f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Pandal_Kalash_Pot"), CylinderMesh, PandalCenter + FVector(0.0f, 0.0f, 1080.0f), FRotator::ZeroRotator, FVector(1.8f, 1.8f, 1.0f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Pandal_Kalash_Finial"), CylinderMesh, PandalCenter + FVector(0.0f, 0.0f, 1150.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 1.2f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// Corner Kalash Finials on roof eaves
+	const FVector CornerKalashPos[] = {
+		PandalCenter + FVector(-850.0f, -950.0f, 770.0f),
+		PandalCenter + FVector(-850.0f,  950.0f, 770.0f),
+		PandalCenter + FVector( 850.0f, -950.0f, 770.0f),
+		PandalCenter + FVector( 850.0f,  950.0f, 770.0f)
+	};
+	for (int32 i = 0; i < UE_ARRAY_COUNT(CornerKalashPos); ++i)
+	{
+		CreateMeshPiece(FString::Printf(TEXT("Pandal_CornerKalash_%d"), i), CylinderMesh, CornerKalashPos[i], FRotator::ZeroRotator, FVector(0.7f, 0.7f, 0.8f), false, GoldMat ? GoldMat : GrayMaterial);
+		// Ceremonial Saffron Flag on corner
+		CreateMeshPiece(FString::Printf(TEXT("Pandal_FlagPole_%d"), i), CylinderMesh, CornerKalashPos[i] + FVector(0.0f, 0.0f, 120.0f), FRotator::ZeroRotator, FVector(0.08f, 0.08f, 2.2f), false, GoldMat ? GoldMat : GrayMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Pandal_Flag_%d"), i), CubeMesh, CornerKalashPos[i] + FVector(35.0f, 0.0f, 210.0f), FRotator(0.0f, 15.0f, 0.0f), FVector(0.7f, 0.05f, 0.45f), false, MarigoldMat ? MarigoldMat : GrayMaterial);
+	}
+
+	// 6. Sacred Rear Wall (Garbhagriha Enclosure & Prabhavali Wall)
 	CreateMeshPiece(
 		TEXT("Pandal_BackWall"),
 		CubeMesh,
-		PandalCenter + FVector(580.0f, 0.0f, 380.0f),
+		PandalCenter + FVector(700.0f, 0.0f, 400.0f),
 		FRotator::ZeroRotator,
-		FVector(0.9f, 15.0f, 6.8f)
+		FVector(0.9f, 17.0f, 7.2f),
+		true,
+		DarkMaterial
 	);
+	// Flanking Side Enclosure Walls
+	CreateMeshPiece(TEXT("Pandal_SideWall_L"), CubeMesh, PandalCenter + FVector(250.0f, -800.0f, 380.0f), FRotator::ZeroRotator, FVector(9.5f, 0.8f, 6.8f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Pandal_SideWall_R"), CubeMesh, PandalCenter + FVector(250.0f,  800.0f, 380.0f), FRotator::ZeroRotator, FVector(9.5f, 0.8f, 6.8f), true, DarkMaterial);
+
+	// 7. Sub-systems: Deity Sculpture, Diyas, Rangolis, Garlands
+	BuildGaneshaShrine(PandalCenter);
+	BuildFestivalDiyas(PandalCenter);
+	BuildFestivalRangolis(PandalCenter);
+	BuildGarlandsAndBanners(PandalCenter);
+}
+
+void AFestivalStreetBuilder::BuildGaneshaShrine(const FVector& PandalCenter)
+{
+	// Altar / Garbhagriha Center (elevated sacred sanctum)
+	const FVector AltarCenter = PandalCenter + FVector(240.0f, 0.0f, 85.0f);
+
+	// ── 1. The Singhasan (Multi-Tier Lotus Throne) ──
+	// Base Octagonal Dais
+	if (ChamferCubeMesh)
+	{
+		CreateMeshPiece(TEXT("Shrine_Dais_Base"), ChamferCubeMesh, AltarCenter + FVector(0.0f, 0.0f, 25.0f), FRotator::ZeroRotator, FVector(4.8f, 4.8f, 0.6f), true, DarkMaterial);
+	}
+	// Middle Marble Tier
+	CreateMeshPiece(TEXT("Shrine_Dais_Marble"), CylinderMesh, AltarCenter + FVector(0.0f, 0.0f, 65.0f), FRotator::ZeroRotator, FVector(3.8f, 3.8f, 0.45f), true, WhiteMat ? WhiteMat : GrayMaterial);
+
+	// Sacred Lotus Tier (Kamala Asana)
+	CreateMeshPiece(TEXT("Shrine_Lotus_Core"), CylinderMesh, AltarCenter + FVector(0.0f, 0.0f, 95.0f), FRotator::ZeroRotator, FVector(3.2f, 3.2f, 0.35f), true, SindoorMat ? SindoorMat : GrayMaterial);
+
+	// Concentric Golden Deity Mat
+	CreateMeshPiece(TEXT("Shrine_Golden_Asana"), CylinderMesh, AltarCenter + FVector(0.0f, 0.0f, 120.0f), FRotator::ZeroRotator, FVector(2.7f, 2.7f, 0.28f), true, GoldMat ? GoldMat : GrayMaterial);
+
+	// ── 2. The Sacred Form of Lord Ganesha (Vakratunda Mahakaya) ──
+	// A. Seated Folded Legs (Padmasana / Lalitasana) with Saffron Dhoti
+	CreateMeshPiece(
+		TEXT("Ganesh_Legs_Base"),
+		CylinderMesh,
+		AltarCenter + FVector(0.0f, 0.0f, 160.0f),
+		FRotator::ZeroRotator,
+		FVector(2.6f, 2.2f, 0.65f),
+		true,
+		MarigoldMat ? MarigoldMat : GrayMaterial
+	);
+
+	// B. Torso (Lambodara - The Great Cosmic Belly)
+	CreateMeshPiece(
+		TEXT("Ganesh_Torso"),
+		CylinderMesh,
+		AltarCenter + FVector(0.0f, 0.0f, 240.0f),
+		FRotator::ZeroRotator,
+		FVector(1.95f, 1.8f, 1.35f),
+		true,
+		GoldMat ? GoldMat : GrayMaterial
+	);
+	// Sacred Thread (Janeu) draping diagonally
+	CreateMeshPiece(
+		TEXT("Ganesh_Janeu"),
+		CubeMesh,
+		AltarCenter + FVector(30.0f, 0.0f, 250.0f),
+		FRotator(25.0f, -30.0f, 0.0f),
+		FVector(0.08f, 1.8f, 0.08f),
+		false,
+		WhiteMat ? WhiteMat : GrayMaterial
+	);
+	// Sacred Chest Garland (Kanthi Haar)
+	CreateMeshPiece(
+		TEXT("Ganesh_Haar"),
+		CylinderMesh,
+		AltarCenter + FVector(10.0f, 0.0f, 280.0f),
+		FRotator::ZeroRotator,
+		FVector(1.65f, 1.65f, 0.18f),
+		false,
+		MarigoldMat ? MarigoldMat : GrayMaterial
+	);
+
+	// C. Four Divine Arms (Chaturbhuja)
+	// Lower Right Arm (Abhaya Mudra — Blessing of Protection)
+	CreateMeshPiece(TEXT("Ganesh_Arm_LowerR"), CylinderMesh, AltarCenter + FVector(60.0f, 110.0f, 235.0f), FRotator(45.0f, 25.0f, 0.0f), FVector(0.45f, 0.45f, 1.05f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Ganesh_Hand_LowerR"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, AltarCenter + FVector(115.0f, 140.0f, 265.0f), FRotator::ZeroRotator, FVector(0.35f, 0.45f, 0.5f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// Lower Left Arm (Holding Golden Modak Bowl)
+	CreateMeshPiece(TEXT("Ganesh_Arm_LowerL"), CylinderMesh, AltarCenter + FVector(60.0f, -110.0f, 220.0f), FRotator(40.0f, -35.0f, 0.0f), FVector(0.45f, 0.45f, 1.0f), false, GoldMat ? GoldMat : GrayMaterial);
+	// Modak Bowl (Golden Katori)
+	CreateMeshPiece(TEXT("Ganesh_ModakBowl"), CylinderMesh, AltarCenter + FVector(105.0f, -115.0f, 225.0f), FRotator::ZeroRotator, FVector(0.6f, 0.6f, 0.22f), false, GoldMat ? GoldMat : GrayMaterial);
+	// Miniature Sculpted Modak inside the hand
+	CreateMeshPiece(TEXT("Ganesh_HandModak"), CylinderMesh, AltarCenter + FVector(105.0f, -115.0f, 240.0f), FRotator::ZeroRotator, FVector(0.28f, 0.28f, 0.3f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// Upper Right Arm (Holding Divine Ankusha / Goad)
+	CreateMeshPiece(TEXT("Ganesh_Arm_UpperR"), CylinderMesh, AltarCenter + FVector(-20.0f, 125.0f, 280.0f), FRotator(-50.0f, 15.0f, 0.0f), FVector(0.38f, 0.38f, 1.1f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Ganesh_Ankusha"), CylinderMesh, AltarCenter + FVector(-20.0f, 170.0f, 325.0f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 0.9f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// Upper Left Arm (Holding Sacred Parashu / Axe)
+	CreateMeshPiece(TEXT("Ganesh_Arm_UpperL"), CylinderMesh, AltarCenter + FVector(-20.0f, -125.0f, 280.0f), FRotator(-50.0f, -15.0f, 0.0f), FVector(0.38f, 0.38f, 1.1f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Ganesh_Parashu"), CylinderMesh, AltarCenter + FVector(-20.0f, -170.0f, 325.0f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 0.9f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// D. The Divine Elephant Head (Gajanana)
+	CreateMeshPiece(
+		TEXT("Ganesh_Head"),
+		CylinderMesh,
+		AltarCenter + FVector(10.0f, 0.0f, 335.0f),
+		FRotator::ZeroRotator,
+		FVector(1.4f, 1.4f, 1.15f),
+		true,
+		GoldMat ? GoldMat : GrayMaterial
+	);
+	// Forehead Crown Bumps (Kumbha)
+	if (ChamferCubeMesh)
+	{
+		CreateMeshPiece(TEXT("Ganesh_Kumbha"), ChamferCubeMesh, AltarCenter + FVector(35.0f, 0.0f, 380.0f), FRotator::ZeroRotator, FVector(0.85f, 0.95f, 0.45f), false, GoldMat ? GoldMat : GrayMaterial);
+	}
+	// Sacred Tilak Mark on Forehead (Sindoor Crescent)
+	CreateMeshPiece(
+		TEXT("Ganesh_Tilak"),
+		CubeMesh,
+		AltarCenter + FVector(95.0f, 0.0f, 375.0f),
+		FRotator::ZeroRotator,
+		FVector(0.1f, 0.35f, 0.5f),
+		false,
+		SindoorMat ? SindoorMat : GrayMaterial
+	);
+
+	// Broad Fan Ears (Supakarna)
+	if (QuarterCylinderMesh)
+	{
+		CreateMeshPiece(TEXT("Ganesh_Ear_L"), QuarterCylinderMesh, AltarCenter + FVector(0.0f, -125.0f, 335.0f), FRotator(0.0f, -70.0f, 0.0f), FVector(0.3f, 1.5f, 1.3f), false, GoldMat ? GoldMat : GrayMaterial);
+		CreateMeshPiece(TEXT("Ganesh_Ear_R"), QuarterCylinderMesh, AltarCenter + FVector(0.0f,  125.0f, 335.0f), FRotator(0.0f, 70.0f, 0.0f), FVector(0.3f, 1.5f, 1.3f), false, GoldMat ? GoldMat : GrayMaterial);
+	}
+
+	// Curved Elephant Trunk (Vakratunda) curling towards His left hand
+	CreateMeshPiece(TEXT("Ganesh_Trunk_Upper"), CylinderMesh, AltarCenter + FVector(75.0f, -15.0f, 295.0f), FRotator(35.0f, -20.0f, 0.0f), FVector(0.48f, 0.48f, 0.95f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Ganesh_Trunk_Tip"), CylinderMesh, AltarCenter + FVector(90.0f, -65.0f, 245.0f), FRotator(15.0f, -65.0f, 0.0f), FVector(0.35f, 0.35f, 0.7f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// Single Ivory Tusk (Ekadanta)
+	CreateMeshPiece(TEXT("Ganesh_Tusk_R"), CylinderMesh, AltarCenter + FVector(75.0f, 40.0f, 285.0f), FRotator(45.0f, 15.0f, 0.0f), FVector(0.14f, 0.14f, 0.5f), false, WhiteMat ? WhiteMat : GrayMaterial);
+
+	// E. Golden Regal Mukut (Temple Crown)
+	CreateMeshPiece(TEXT("Ganesh_Mukut_Tier1"), CylinderMesh, AltarCenter + FVector(10.0f, 0.0f, 410.0f), FRotator::ZeroRotator, FVector(1.2f, 1.2f, 0.45f), false, GoldMat ? GoldMat : GrayMaterial);
+	if (ChamferCubeMesh)
+	{
+		CreateMeshPiece(TEXT("Ganesh_Mukut_Tier2"), ChamferCubeMesh, AltarCenter + FVector(10.0f, 0.0f, 450.0f), FRotator::ZeroRotator, FVector(0.85f, 0.85f, 0.5f), false, GoldMat ? GoldMat : GrayMaterial);
+	}
+	CreateMeshPiece(TEXT("Ganesh_Mukut_Spire"), CylinderMesh, AltarCenter + FVector(10.0f, 0.0f, 495.0f), FRotator::ZeroRotator, FVector(0.45f, 0.45f, 0.7f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// F. Prabhavali (Divine Golden Aureole Halo Arch)
+	if (CircularBandMesh)
+	{
+		CreateMeshPiece(
+			TEXT("Ganesh_Prabhavali_Ring"),
+			CircularBandMesh,
+			AltarCenter + FVector(-60.0f, 0.0f, 350.0f),
+			FRotator(90.0f, 0.0f, 0.0f),
+			FVector(4.2f, 0.35f, 4.2f),
+			false,
+			GoldMat ? GoldMat : GrayMaterial
+		);
+	}
+	else
+	{
+		CreateMeshPiece(
+			TEXT("Ganesh_Prabhavali_Disc"),
+			CylinderMesh,
+			AltarCenter + FVector(-60.0f, 0.0f, 350.0f),
+			FRotator(90.0f, 0.0f, 0.0f),
+			FVector(4.0f, 0.2f, 4.0f),
+			false,
+			GoldMat ? GoldMat : GrayMaterial
+		);
+	}
+
+	// ── 3. Altar Puja Offerings ──
+	// A. Ceremonial Modak Thali (Golden Offering Platter)
+	const FVector ThaliPos = AltarCenter + FVector(115.0f, 0.0f, 85.0f);
+	CreateMeshPiece(TEXT("Altar_ModakThali"), CylinderMesh, ThaliPos, FRotator::ZeroRotator, FVector(1.4f, 1.4f, 0.09f), false, GoldMat ? GoldMat : GrayMaterial);
+	// Piled Modak Sweets on the Thali (7 sacred modaks)
+	for (int32 m = 0; m < 6; ++m)
+	{
+		float Angle = m * 60.0f;
+		float Rad = FMath::DegreesToRadians(Angle);
+		FVector ModakOffset(FMath::Cos(Rad) * 35.0f, FMath::Sin(Rad) * 35.0f, 12.0f);
+		CreateMeshPiece(FString::Printf(TEXT("Altar_Modak_%d"), m), CylinderMesh, ThaliPos + ModakOffset, FRotator::ZeroRotator, FVector(0.24f, 0.24f, 0.35f), false, GoldMat ? GoldMat : GrayMaterial);
+	}
+	// Apex Modak
+	CreateMeshPiece(TEXT("Altar_Modak_Apex"), CylinderMesh, ThaliPos + FVector(0.0f, 0.0f, 26.0f), FRotator::ZeroRotator, FVector(0.28f, 0.28f, 0.4f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// B. Brass Puja Bell (Ghanti)
+	CreateMeshPiece(TEXT("Altar_PujaBell_Base"), CylinderMesh, AltarCenter + FVector(125.0f, -85.0f, 85.0f), FRotator::ZeroRotator, FVector(0.35f, 0.35f, 0.4f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Altar_PujaBell_Handle"), CylinderMesh, AltarCenter + FVector(125.0f, -85.0f, 110.0f), FRotator::ZeroRotator, FVector(0.1f, 0.1f, 0.6f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// C. Incense Holder (Dhoop Stand)
+	CreateMeshPiece(TEXT("Altar_DhoopStand"), CylinderMesh, AltarCenter + FVector(125.0f, 85.0f, 85.0f), FRotator::ZeroRotator, FVector(0.35f, 0.35f, 0.3f), false, GoldMat ? GoldMat : GrayMaterial);
+
+	// D. Twin Ceremonial Brass Samai Lamps (Standing Oil Lamps)
+	const FVector SamaiPositions[] = {
+		AltarCenter + FVector(60.0f, -190.0f, 0.0f),
+		AltarCenter + FVector(60.0f,  190.0f, 0.0f)
+	};
+	for (int32 s = 0; s < 2; ++s)
+	{
+		const FVector& SPos = SamaiPositions[s];
+		CreateMeshPiece(FString::Printf(TEXT("Samai_Base_%d"), s), CylinderMesh, SPos + FVector(0.0f, 0.0f, 15.0f), FRotator::ZeroRotator, FVector(0.7f, 0.7f, 0.2f), false, GoldMat ? GoldMat : GrayMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Samai_Stem_%d"), s), CylinderMesh, SPos + FVector(0.0f, 0.0f, 120.0f), FRotator::ZeroRotator, FVector(0.18f, 0.18f, 2.2f), false, GoldMat ? GoldMat : GrayMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Samai_Bowl_%d"), s), CylinderMesh, SPos + FVector(0.0f, 0.0f, 230.0f), FRotator::ZeroRotator, FVector(0.75f, 0.75f, 0.25f), false, GoldMat ? GoldMat : GrayMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Samai_Flame_%d"), s), CylinderMesh, SPos + FVector(0.0f, 0.0f, 250.0f), FRotator::ZeroRotator, FVector(0.25f, 0.25f, 0.35f), false, DiyaGlowMat ? DiyaGlowMat : GoldMat);
+		CreateFestivalLight(FString::Printf(TEXT("Samai_Light_%d"), s), SPos + FVector(0.0f, 0.0f, 260.0f), FLinearColor(1.0f, 0.60f, 0.12f), 3500.0f, 650.0f);
+	}
+}
+
+void AFestivalStreetBuilder::BuildFestivalDiyas(const FVector& PandalCenter)
+{
+	// Symmetrical Diya stations along the ceremonial entrance steps
+	const float StepDiyaX[] = { 1260.0f, 1320.0f, 1380.0f, 1440.0f };
+	const float StepDiyaZ[] = { 20.0f, 38.0f, 56.0f, 74.0f };
+
+	for (int32 i = 0; i < 4; ++i)
+	{
+		float X = StepDiyaX[i];
+		float Z = StepDiyaZ[i];
+
+		// Left Step Diya
+		CreateMeshPiece(FString::Printf(TEXT("StepDiya_L_Base_%d"), i), CylinderMesh, FVector(X, -300.0f, Z), FRotator::ZeroRotator, FVector(0.42f, 0.42f, 0.16f), false, DarkMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("StepDiya_L_Flame_%d"), i), CylinderMesh, FVector(X, -300.0f, Z + 12.0f), FRotator::ZeroRotator, FVector(0.18f, 0.18f, 0.26f), false, DiyaGlowMat ? DiyaGlowMat : GoldMat);
+		CreateFestivalLight(FString::Printf(TEXT("StepDiya_L_Light_%d"), i), FVector(X, -300.0f, Z + 20.0f), FLinearColor(1.0f, 0.55f, 0.10f), 1200.0f, 400.0f);
+
+		// Right Step Diya
+		CreateMeshPiece(FString::Printf(TEXT("StepDiya_R_Base_%d"), i), CylinderMesh, FVector(X, 300.0f, Z), FRotator::ZeroRotator, FVector(0.42f, 0.42f, 0.16f), false, DarkMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("StepDiya_R_Flame_%d"), i), CylinderMesh, FVector(X, 300.0f, Z + 12.0f), FRotator::ZeroRotator, FVector(0.18f, 0.18f, 0.26f), false, DiyaGlowMat ? DiyaGlowMat : GoldMat);
+		CreateFestivalLight(FString::Printf(TEXT("StepDiya_R_Light_%d"), i), FVector(X, 300.0f, Z + 20.0f), FLinearColor(1.0f, 0.55f, 0.10f), 1200.0f, 400.0f);
+	}
+}
+
+void AFestivalStreetBuilder::BuildFestivalRangolis(const FVector& PandalCenter)
+{
+	// 1. Grand Pandal Entrance Mandala (X = 1520, Y = 0, Z = 86)
+	const FVector EntranceRangoliPos(1520.0f, 0.0f, 86.0f);
+	CreateMeshPiece(TEXT("Rangoli_Ent_Layer1"), CylinderMesh, EntranceRangoliPos, FRotator::ZeroRotator, FVector(5.2f, 5.2f, 0.015f), false, MarigoldMat ? MarigoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Rangoli_Ent_Layer2"), CylinderMesh, EntranceRangoliPos + FVector(0.0f, 0.0f, 0.5f), FRotator::ZeroRotator, FVector(4.0f, 4.0f, 0.02f), false, SindoorMat ? SindoorMat : GrayMaterial);
+	if (ChamferCubeMesh)
+	{
+		CreateMeshPiece(TEXT("Rangoli_Ent_Layer3"), ChamferCubeMesh, EntranceRangoliPos + FVector(0.0f, 0.0f, 1.0f), FRotator(0.0f, 45.0f, 0.0f), FVector(2.8f, 2.8f, 0.025f), false, WhiteMat ? WhiteMat : GrayMaterial);
+	}
+	CreateMeshPiece(TEXT("Rangoli_Ent_Layer4"), CylinderMesh, EntranceRangoliPos + FVector(0.0f, 0.0f, 1.5f), FRotator::ZeroRotator, FVector(1.8f, 1.8f, 0.03f), false, GoldMat ? GoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Rangoli_Ent_Center"), CylinderMesh, EntranceRangoliPos + FVector(0.0f, 0.0f, 2.0f), FRotator::ZeroRotator, FVector(0.6f, 0.6f, 0.035f), false, SindoorMat ? SindoorMat : GrayMaterial);
+
+	// 2. Central Chowk Plaza Festive Rangoli (X = 800, Y = 0, Z = 45)
+	const FVector ChowkRangoliPos(800.0f, 0.0f, 45.0f);
+	CreateMeshPiece(TEXT("Rangoli_Chowk_Layer1"), CylinderMesh, ChowkRangoliPos, FRotator::ZeroRotator, FVector(6.0f, 6.0f, 0.015f), false, MarigoldMat ? MarigoldMat : GrayMaterial);
+	CreateMeshPiece(TEXT("Rangoli_Chowk_Layer2"), CylinderMesh, ChowkRangoliPos + FVector(0.0f, 0.0f, 0.5f), FRotator::ZeroRotator, FVector(4.5f, 4.5f, 0.02f), false, SindoorMat ? SindoorMat : GrayMaterial);
+	if (ChamferCubeMesh)
+	{
+		CreateMeshPiece(TEXT("Rangoli_Chowk_Layer3"), ChamferCubeMesh, ChowkRangoliPos + FVector(0.0f, 0.0f, 1.0f), FRotator(0.0f, 22.5f, 0.0f), FVector(3.2f, 3.2f, 0.025f), false, GoldMat ? GoldMat : GrayMaterial);
+	}
+	CreateMeshPiece(TEXT("Rangoli_Chowk_Center"), CylinderMesh, ChowkRangoliPos + FVector(0.0f, 0.0f, 1.5f), FRotator::ZeroRotator, FVector(1.2f, 1.2f, 0.03f), false, WhiteMat ? WhiteMat : GrayMaterial);
+}
+
+void AFestivalStreetBuilder::BuildGarlandsAndBanners(const FVector& PandalCenter)
+{
+	// 1. Portico Entrance Toran (Overhead marigold & mango leaf garland across X = 1420)
+	for (int32 g = 0; g < 14; ++g)
+	{
+		float Y = -650.0f + (g * 100.0f);
+		float DropZ = 660.0f - (FMath::Sin((g / 13.0f) * PI) * 35.0f);
+		UMaterialInterface* LeafOrFlower = (g % 2 == 0) ? (MarigoldMat ? MarigoldMat : GrayMaterial) : (GreenMat ? GreenMat : DarkMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Portico_Toran_%d"), g), CylinderMesh, FVector(1420.0f, Y, DropZ), FRotator(0.0f, 0.0f, 90.0f), FVector(0.35f, 0.35f, 0.45f), false, LeafOrFlower);
+	}
+
+	// 2. Festive Cloth Shamiana Valances hanging beneath the front eaves
+	CreateMeshPiece(
+		TEXT("Shamiana_Valance_Front"),
+		CubeMesh,
+		FVector(1420.0f, 0.0f, 690.0f),
+		FRotator::ZeroRotator,
+		FVector(0.12f, 14.8f, 0.45f),
+		false,
+		SindoorMat ? SindoorMat : GrayMaterial
+	);
+	CreateMeshPiece(
+		TEXT("Shamiana_Valance_Trim"),
+		CubeMesh,
+		FVector(1420.0f, 0.0f, 665.0f),
+		FRotator::ZeroRotator,
+		FVector(0.14f, 14.8f, 0.08f),
+		false,
+		GoldMat ? GoldMat : GrayMaterial
+	);
+
+	// 3. Approach Street Festive Banners (Lining the final stretch from X = 950 to 1350)
+	const float BannerX[] = { 950.0f, 1100.0f, 1250.0f };
+	for (int32 b = 0; b < 3; ++b)
+	{
+		float X = BannerX[b];
+		// Left Street Banner Pole & Cloth
+		CreateMeshPiece(FString::Printf(TEXT("Banner_L_Pole_%d"), b), CylinderMesh, FVector(X, -450.0f, 180.0f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 3.8f), false, DarkMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Banner_L_Cloth_%d"), b), CubeMesh, FVector(X, -450.0f, 260.0f), FRotator::ZeroRotator, FVector(0.06f, 0.9f, 1.8f), false, MarigoldMat ? MarigoldMat : GrayMaterial);
+
+		// Right Street Banner Pole & Cloth
+		CreateMeshPiece(FString::Printf(TEXT("Banner_R_Pole_%d"), b), CylinderMesh, FVector(X, 450.0f, 180.0f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 3.8f), false, DarkMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Banner_R_Cloth_%d"), b), CubeMesh, FVector(X, 450.0f, 260.0f), FRotator::ZeroRotator, FVector(0.06f, 0.9f, 1.8f), false, SindoorMat ? SindoorMat : GrayMaterial);
+	}
+}
+
+void AFestivalStreetBuilder::BuildAntiGravityDemonstrationArea()
+{
+	// North of the Pandal approach at X = 1400, Y = -1150
+	const FVector PlazaCenter(1400.0f, -1150.0f, 0.0f);
+
+	// 1. Open Festive Aerial Courtyard Slab (Utsav Rangmanch)
+	CreateMeshPiece(
+		TEXT("AG_Plaza_Floor"),
+		CubeMesh,
+		PlazaCenter + FVector(0.0f, 0.0f, 15.0f),
+		FRotator::ZeroRotator,
+		FVector(13.0f, 13.0f, 0.4f),
+		true,
+		GrayMaterial
+	);
+
+	// 2. Surrounding Carved Balustrades / Low Walls
+	CreateMeshPiece(TEXT("AG_Plaza_Wall_W"), CubeMesh, PlazaCenter + FVector(-650.0f, 0.0f, 65.0f), FRotator::ZeroRotator, FVector(0.6f, 13.0f, 0.8f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("AG_Plaza_Wall_N"), CubeMesh, PlazaCenter + FVector(0.0f, -650.0f, 65.0f), FRotator::ZeroRotator, FVector(13.0f, 0.6f, 0.8f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("AG_Plaza_Wall_E"), CubeMesh, PlazaCenter + FVector(650.0f, 0.0f, 65.0f), FRotator::ZeroRotator, FVector(0.6f, 13.0f, 0.8f), true, DarkMaterial);
+
+	// 3. Stepped Aerial Observation Plinths (Ideal for launching into Anti-Gravity float)
+	CreateMeshPiece(TEXT("AG_LaunchPlinth_1"), CubeMesh, PlazaCenter + FVector(-350.0f, 350.0f, 75.0f), FRotator::ZeroRotator, FVector(2.8f, 2.8f, 1.2f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("AG_LaunchPlinth_2"), CubeMesh, PlazaCenter + FVector(-350.0f, 100.0f, 150.0f), FRotator::ZeroRotator, FVector(2.2f, 2.2f, 2.6f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("AG_LaunchPlinth_3"), CubeMesh, PlazaCenter + FVector(-350.0f, -150.0f, 240.0f), FRotator::ZeroRotator, FVector(1.8f, 1.8f, 4.4f), true, DarkMaterial);
+
+	// 4. Floating Festive Sky Lanterns (Aakash Kandil) suspended at graceful heights
+	const FVector LanternFloatingOffsets[] = {
+		FVector(0.0f, 0.0f, 280.0f),
+		FVector(250.0f, -200.0f, 420.0f),
+		FVector(-200.0f, -250.0f, 540.0f),
+		FVector(200.0f, 250.0f, 380.0f),
+		FVector(0.0f, -300.0f, 650.0f)
+	};
+
+	for (int32 k = 0; k < UE_ARRAY_COUNT(LanternFloatingOffsets); ++k)
+	{
+		const FVector LanternPos = PlazaCenter + LanternFloatingOffsets[k];
+
+		// Glowing cylindrical lantern body
+		CreateMeshPiece(
+			FString::Printf(TEXT("AG_SkyLantern_Body_%d"), k),
+			CylinderMesh,
+			LanternPos,
+			FRotator(0.0f, k * 30.0f, 0.0f),
+			FVector(0.7f, 0.7f, 0.9f),
+			false,
+			DiyaGlowMat ? DiyaGlowMat : GoldMat
+		);
+		// Festive tassel fringe hanging beneath
+		CreateMeshPiece(
+			FString::Printf(TEXT("AG_SkyLantern_Tassel_%d"), k),
+			CylinderMesh,
+			LanternPos - FVector(0.0f, 0.0f, 65.0f),
+			FRotator::ZeroRotator,
+			FVector(0.25f, 0.25f, 0.5f),
+			false,
+			MarigoldMat ? MarigoldMat : GrayMaterial
+		);
+		// Ambient warm light from each sky lantern
+		CreateFestivalLight(
+			FString::Printf(TEXT("AG_Lantern_Light_%d"), k),
+			LanternPos,
+			FLinearColor(1.0f, 0.65f, 0.15f),
+			3000.0f,
+			750.0f
+		);
+	}
 }
 
 void AFestivalStreetBuilder::BuildFestivalLighting()
@@ -917,11 +1408,12 @@ void AFestivalStreetBuilder::BuildFestivalLighting()
 	CreateFestivalLight(TEXT("Gali_North_Light2"), FVector(800.0f, -1450.0f, 250.0f), SaffronGold, 5000.0f, 1000.0f);
 	CreateFestivalLight(TEXT("Gali_South_Light1"), FVector(800.0f,  1050.0f, 280.0f), SaffronGold, 5000.0f, 1000.0f);
 
-	// 5. Divine Illumination Inside Ganesh Pandal
-	CreateFestivalLight(TEXT("Pandal_Main_Light"), FVector(2200.0f, 0.0f, 450.0f), DivineGold, 14000.0f, 2000.0f);
-	CreateFestivalLight(TEXT("Pandal_Altar_Glow"), FVector(2350.0f, 0.0f, 260.0f), SaffronGold, 9000.0f, 950.0f);
-	CreateFestivalLight(TEXT("Pandal_Entrance_L"), FVector(1700.0f, -400.0f, 320.0f), DeepAmber, 5500.0f, 850.0f);
-	CreateFestivalLight(TEXT("Pandal_Entrance_R"), FVector(1700.0f,  400.0f, 320.0f), DeepAmber, 5500.0f, 850.0f);
+	// 5. Divine Illumination Inside Ganesh Pandal & Altar
+	CreateFestivalLight(TEXT("Pandal_Main_Light"), FVector(2200.0f, 0.0f, 480.0f), DivineGold, 18000.0f, 2400.0f);
+	CreateFestivalLight(TEXT("Pandal_Altar_Spot"), FVector(2400.0f, 0.0f, 460.0f), DivineGold, 22000.0f, 1500.0f);
+	CreateFestivalLight(TEXT("Pandal_Sanctum_Glow"), FVector(2480.0f, 0.0f, 300.0f), SaffronGold, 14000.0f, 1100.0f);
+	CreateFestivalLight(TEXT("Pandal_Entrance_L"), FVector(1420.0f, -400.0f, 380.0f), DeepAmber, 6500.0f, 1000.0f);
+	CreateFestivalLight(TEXT("Pandal_Entrance_R"), FVector(1420.0f,  400.0f, 380.0f), DeepAmber, 6500.0f, 1000.0f);
 }
 
 void AFestivalStreetBuilder::BuildCombatAndParkourCourtyard()
@@ -967,7 +1459,7 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 
 	// ── 1. Spawn Ganesh Pandal Shrine Interactable ──
 	// At the altar in front of the idol
-	FVector ShrineLocation = ActorOrigin + FVector(2250.0f, 0.0f, 90.0f);
+	FVector ShrineLocation = ActorOrigin + FVector(2300.0f, 0.0f, 90.0f);
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -986,11 +1478,8 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 
 		if (Shrine)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("GANAPATI: Ganesh Pandal Shrine SPAWNED at %s"), *ShrineLocation.ToString());
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("GANAPATI: FAILED to spawn Ganesh Pandal Shrine!"));
+			Shrine->SetPromptText(FText::FromString(TEXT("Press [E] to Offer Prayers & Modak to Lord Ganesha")));
+			Shrine->SetInteractionMessage(FText::FromString(TEXT("You offered modak and prayers with deep devotion. Lord Vighnaharta blesses your journey!")));
 		}
 	}
 

@@ -37,6 +37,14 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction")
 	FText GetInteractionMessage() const { return InteractionMessage; }
 
+	/** Set prompt text */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction")
+	void SetPromptText(const FText& InPrompt) { InteractionPrompt = InPrompt; }
+
+	/** Set interaction message */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction")
+	void SetInteractionMessage(const FText& InMessage) { InteractionMessage = InMessage; }
+
 	/** Sphere component defining interaction range */
 	FORCEINLINE USphereComponent* GetTriggerSphere() const { return TriggerSphere; }
 
