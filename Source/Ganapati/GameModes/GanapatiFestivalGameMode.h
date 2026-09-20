@@ -10,6 +10,7 @@ class ACameraActor;
 class AGanapatiNPC;
 class AGanapatiInteractable;
 class AGanapatiTrainingDummy;
+class AGanapatiAsuraMinion;
 
 /**
  * Progression steps for the Sacred Darshan festival quest.
@@ -115,6 +116,10 @@ protected:
 	UFUNCTION()
 	void HandleDummyDamageConfirmed(AGanapatiTrainingDummy* Dummy, float DamageTaken, AActor* DamageCauser, const FVector& DamageLocation);
 
+	/** Event handler when an Asura Minion is defeated (Phase 5B Subsystem 1) */
+	UFUNCTION()
+	void HandleAsuraDied(AGanapatiAsuraMinion* Asura);
+
 	/** Blueprint hook when quest step advances */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Quest")
 	void BP_OnQuestStepAdvanced(ESacredDarshanStep CompletedStep, ESacredDarshanStep NewStep);
@@ -142,4 +147,7 @@ private:
 
 	FTimerHandle CinematicTimerHandle;
 	FTimerHandle QuestBindTimerHandle;
+
+	int32 TotalAsurasSpawned = 0;
+	int32 DefeatedAsurasCount = 0;
 };

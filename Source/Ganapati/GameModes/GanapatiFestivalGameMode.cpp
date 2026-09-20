@@ -6,6 +6,7 @@
 #include "NPCs/GanapatiNPC.h"
 #include "Interaction/GanapatiInteractable.h"
 #include "Enemies/GanapatiTrainingDummy.h"
+#include "Enemies/GanapatiAsuraMinion.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -303,8 +304,23 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 		}
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Sacred Darshan quest listeners bound to %d NPCs, %d Interactables, %d Dummies."),
-		NPCs.Num(), Interactables.Num(), Dummies.Num());
+	// 4. Bind to Asura Minions for Courtyard Skirmish Encounter (Phase 5B Subsystem 1)
+	TArray<AActor*> Asuras;
+	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiAsuraMinion::StaticClass(), Asuras);
+	TotalAsurasSpawned = Asuras.Num();
+	DefeatedAsurasCount = 0;
+
+	for (AActor* Actor : Asuras)
+	{
+		if (AGanapatiAsuraMinion* Asura = Cast<AGanapatiAsuraMinion>(Actor))
+		{
+			Asura->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+			Asura->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Sacred Darshan quest listeners bound to %d NPCs, %d Interactables, %d Dummies, %d Asuras."),
+		NPCs.Num(), Interactables.Num(), Dummies.Num(), Asuras.Num());
 }
 
 void AGanapatiFestivalGameMode::AdvanceQuestStep(ESacredDarshanStep ExpectedCurrentStep, ESacredDarshanStep NextStep, const FText& CompletionToastText)
@@ -419,5 +435,33 @@ void AGanapatiFestivalGameMode::HandleDummyDamageConfirmed(AGanapatiTrainingDumm
 			ESacredDarshanStep::Completed,
 			FText::FromString(TEXT("✦ Step 4 Complete: Divine Strength Proven! Sacred Darshan Fulfilled! ✦"))
 		);
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleAsuraDied(AGanapatiAsuraMinion* Asura)
+{
+	++DefeatedAsurasCount;
+
+	UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: Asura defeated (%d/%d)"), DefeatedAsurasCount, TotalAsurasSpawned);
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (!PC)
+	{
+		return;
+	}
+
+	AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD());
+	if (!HUD)
+	{
+		return;
+	}
+
+	if (TotalAsurasSpawned > 0 && DefeatedAsurasCount >= TotalAsurasSpawned)
+	{
+		HUD->ShowQuestToast(FText::FromString(TEXT("⚔ Victory! Courtyard Cleared: All Asura Minions Banished! ⚔")), 4.5f);
+	}
+	else
+	{
+		HUD->ShowQuestToast(FText::FromString(FString::Printf(TEXT("⚔ Asura Banished! (%d/%d) ⚔"), DefeatedAsurasCount, TotalAsurasSpawned)), 2.5f);
 	}
 }

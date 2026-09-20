@@ -4,6 +4,7 @@
 #include "Interaction/GanapatiInteractable.h"
 #include "NPCs/GanapatiNPC.h"
 #include "Enemies/GanapatiTrainingDummy.h"
+#include "Enemies/GanapatiAsuraMinion.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/PointLightComponent.h"
@@ -1797,6 +1798,22 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 		FRotator(0.0f, 180.0f, 0.0f),
 		SpawnParams
 	);
+
+	// ── 2B. Spawn Exactly 2 Asura Minions in Combat Courtyard (Phase 5B Subsystem 1) ──
+	const FVector AsuraSpawns[] = {
+		ActorOrigin + FVector(680.0f, 1780.0f, 50.0f),
+		ActorOrigin + FVector(920.0f, 1780.0f, 50.0f)
+	};
+
+	for (int32 AsuraIdx = 0; AsuraIdx < UE_ARRAY_COUNT(AsuraSpawns); ++AsuraIdx)
+	{
+		World->SpawnActor<AGanapatiAsuraMinion>(
+			AGanapatiAsuraMinion::StaticClass(),
+			AsuraSpawns[AsuraIdx],
+			FRotator(0.0f, 180.0f, 0.0f),
+			SpawnParams
+		);
+	}
 
 	// ── 3. Spawn Devotee NPCs along the Festival Street (Phase 5A Subsystem 3) ──
 	struct FNPCRoleSpec
