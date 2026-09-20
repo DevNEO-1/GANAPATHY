@@ -443,7 +443,7 @@ void AGanapatiPlayerCharacter::OnMovementModeChanged(EMovementMode PrevMovementM
 // Input and Action Hook API
 void AGanapatiPlayerCharacter::DoMove(float Right, float Forward)
 {
-	if (bIsDead || !Controller)
+	if (bIsDead || bIsPraying || !Controller)
 	{
 		return;
 	}
@@ -460,7 +460,7 @@ void AGanapatiPlayerCharacter::DoMove(float Right, float Forward)
 
 void AGanapatiPlayerCharacter::DoLook(float Yaw, float Pitch)
 {
-	if (!Controller)
+	if (!Controller || bIsPraying)
 	{
 		return;
 	}
@@ -471,7 +471,7 @@ void AGanapatiPlayerCharacter::DoLook(float Yaw, float Pitch)
 
 void AGanapatiPlayerCharacter::DoJumpStart()
 {
-	if (bIsDead || !MovementComponent)
+	if (bIsDead || bIsPraying || !MovementComponent)
 	{
 		return;
 	}
@@ -489,7 +489,7 @@ void AGanapatiPlayerCharacter::DoJumpEnd()
 
 void AGanapatiPlayerCharacter::DoSprintStart()
 {
-	if (bIsDead || !MovementComponent)
+	if (bIsDead || bIsPraying || !MovementComponent)
 	{
 		return;
 	}
@@ -507,7 +507,7 @@ void AGanapatiPlayerCharacter::DoSprintEnd()
 
 void AGanapatiPlayerCharacter::DoDash()
 {
-	if (bIsDead || !MovementComponent)
+	if (bIsDead || bIsPraying || !MovementComponent)
 	{
 		return;
 	}
@@ -518,7 +518,7 @@ void AGanapatiPlayerCharacter::DoDash()
 
 void AGanapatiPlayerCharacter::DoLightAttackStart()
 {
-	if (bIsDead || !CombatComponent)
+	if (bIsDead || bIsPraying || !CombatComponent)
 	{
 		return;
 	}
@@ -536,7 +536,7 @@ void AGanapatiPlayerCharacter::DoLightAttackEnd()
 
 void AGanapatiPlayerCharacter::DoChargedAttackStart()
 {
-	if (bIsDead || !CombatComponent)
+	if (bIsDead || bIsPraying || !CombatComponent)
 	{
 		return;
 	}
@@ -561,7 +561,7 @@ void AGanapatiPlayerCharacter::DoChargedAttackEnd()
 
 void AGanapatiPlayerCharacter::DoToggleAntiGravity()
 {
-	if (bIsDead || !MovementComponent)
+	if (bIsDead || bIsPraying || !MovementComponent)
 	{
 		return;
 	}
@@ -583,7 +583,7 @@ void AGanapatiPlayerCharacter::DoToggleCameraSide()
 
 void AGanapatiPlayerCharacter::DoInteract()
 {
-	if (bIsDead || !InteractionComponent)
+	if (bIsDead || bIsPraying || !InteractionComponent)
 	{
 		return;
 	}
@@ -593,7 +593,7 @@ void AGanapatiPlayerCharacter::DoInteract()
 
 void AGanapatiPlayerCharacter::DoDivineShockwave()
 {
-	if (bIsDead)
+	if (bIsDead || bIsPraying)
 	{
 		return;
 	}
@@ -692,4 +692,33 @@ void AGanapatiPlayerCharacter::DoDivineShockwave()
 				*HitActor->GetName(), DivineShockwaveDamage, *LaunchImpulse.ToString());
 		}
 	}
+}
+
+void AGanapatiPlayerCharacter::SetPraying(bool bNewPraying)
+{
+	if (bIsPraying == bNewPraying)
+	{
+		return;
+	}
+
+	bIsPraying = bNewPraying;
+
+	if (bIsPraying)
+	{
+		if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+		{
+			MoveComp->StopMovementImmediately();
+		}
+	}
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->SetIgnoreMoveInput(bIsPraying);
+		PC->SetIgnoreLookInput(bIsPraying);
+	}
+
+	BP_OnPrayerStateChanged(bIsPraying);
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiPlayerCharacter::SetPraying: %s"),
+		bIsPraying ? TEXT("PRAYING (Input Locked)") : TEXT("PRAYER ENDED (Input Restored)"));
 }

@@ -1698,10 +1698,18 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 		if (Act->ActorHasTag(TEXT("GrandShrine")))
 		{
 			bHasShrine = true;
+			if (AGanapatiInteractable* ShrineAct = Cast<AGanapatiInteractable>(Act))
+			{
+				ShrineAct->SetTriggersPrayerSequence(true);
+			}
 		}
 		else if (Act->ActorHasTag(TEXT("ModakStall")))
 		{
 			bHasModakStall = true;
+			if (AGanapatiInteractable* ModakAct = Cast<AGanapatiInteractable>(Act))
+			{
+				ModakAct->SetTriggersPrayerSequence(false);
+			}
 		}
 		else
 		{
@@ -1710,11 +1718,19 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 			{
 				bHasShrine = true;
 				Act->Tags.Add(FName(TEXT("GrandShrine")));
+				if (AGanapatiInteractable* ShrineAct = Cast<AGanapatiInteractable>(Act))
+				{
+					ShrineAct->SetTriggersPrayerSequence(true);
+				}
 			}
 			else if (FVector::Dist(Act->GetActorLocation(), ModakStallLocation) < 400.0f)
 			{
 				bHasModakStall = true;
 				Act->Tags.Add(FName(TEXT("ModakStall")));
+				if (AGanapatiInteractable* ModakAct = Cast<AGanapatiInteractable>(Act))
+				{
+					ModakAct->SetTriggersPrayerSequence(false);
+				}
 			}
 		}
 	}
@@ -1736,6 +1752,7 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 			Shrine->SetInteractionMessage(FText::FromString(TEXT("You offered modak and prayers with deep devotion. Lord Vighnaharta blesses your journey!")));
 			Shrine->SetRestoresHealth(true);
 			Shrine->SetDivineEnergyGranted(50.0f);
+			Shrine->SetTriggersPrayerSequence(true);
 		}
 	}
 
@@ -1757,6 +1774,7 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 			ModakStall->SetRestoresHealth(false);
 			ModakStall->SetDivineEnergyGranted(25.0f);
 			ModakStall->SetSingleUse(false);
+			ModakStall->SetTriggersPrayerSequence(false);
 
 			if (ModakStall->GetTriggerSphere())
 			{

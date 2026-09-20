@@ -165,6 +165,14 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Health")
 	bool IsDead() const { return bIsDead; }
 
+	/** Returns true if character is currently engaged in prayer */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Prayer")
+	bool IsPraying() const { return bIsPraying; }
+
+	/** Sets whether the character is engaged in prayer, locking or restoring movement */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Prayer")
+	void SetPraying(bool bNewPraying);
+
 	/** Returns CameraBoom subobject */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
@@ -243,6 +251,10 @@ protected:
 	/** Blueprint implementable hook when Divine Shockwave impacts an enemy */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|DivineEnergy")
 	void BP_OnDivineShockwaveHitEnemy(AActor* HitEnemy, const FVector& HitLocation, const FVector& LaunchImpulse);
+
+	/** Blueprint implementable hook when prayer state begins or ends */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Prayer")
+	void BP_OnPrayerStateChanged(bool bPraying);
 
 protected:
 	/** Camera boom positioning the camera behind the character */
@@ -389,6 +401,7 @@ protected:
 
 private:
 	bool bIsDead = false;
+	bool bIsPraying = false;
 	bool bIsRightShoulder = true;
 
 	/** Peak downward falling velocity (negative) reached during current fall */

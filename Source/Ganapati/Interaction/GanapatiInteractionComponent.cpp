@@ -31,12 +31,17 @@ void UGanapatiInteractionComponent::BeginPlay()
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-			World->SpawnActor<AGanapatiInteractable>(
+			AGanapatiInteractable* FallbackShrine = World->SpawnActor<AGanapatiInteractable>(
 				AGanapatiInteractable::StaticClass(),
 				PandalShrineLocation,
 				FRotator::ZeroRotator,
 				SpawnParams
 			);
+			if (FallbackShrine)
+			{
+				FallbackShrine->Tags.Add(FName(TEXT("GrandShrine")));
+				FallbackShrine->SetTriggersPrayerSequence(true);
+			}
 		}
 	}
 }

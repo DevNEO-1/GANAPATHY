@@ -8,9 +8,14 @@
 
 class USphereComponent;
 class UStaticMeshComponent;
+class ACameraActor;
+class AGanapatiPlayerCharacter;
+class APlayerController;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiInteractedSignature, AActor*, Interactor, const FText&, Message);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiShrineBlessedSignature, AActor*, Interactor, float, DivineEnergyGranted);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiPrayerStartedSignature, AActor*, Interactor, float, Duration);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGanapatiPrayerCompletedSignature, AActor*, Interactor);
 
 /**
  * AGanapatiInteractable
@@ -76,6 +81,18 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction")
 	bool IsSingleUse() const { return bSingleUse; }
 
+	/** Returns true if this interactable triggers a cinematic prayer sequence */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction|Prayer")
+	bool DoesTriggerPrayerSequence() const { return bTriggersPrayerSequence; }
+
+	/** Sets whether this interactable triggers a cinematic prayer sequence */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Prayer")
+	void SetTriggersPrayerSequence(bool bInTriggers) { bTriggersPrayerSequence = bInTriggers; }
+
+	/** Returns true if a prayer sequence is currently active */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction|Prayer")
+	bool IsPrayerActive() const { return bIsPrayerActive; }
+
 	/** Broadcast when player interacts */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
 	FOnGanapatiInteractedSignature OnInteracted;
@@ -84,8 +101,17 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
 	FOnGanapatiShrineBlessedSignature OnShrineBlessed;
 
+	/** Broadcast when prayer interaction starts */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
+	FOnGanapatiPrayerStartedSignature OnPrayerStarted;
+
+	/** Broadcast when prayer interaction completes */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
+	FOnGanapatiPrayerCompletedSignature OnPrayerCompleted;
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** Blueprint hook for custom visual/audio reactions on interaction */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction")
@@ -98,6 +124,14 @@ protected:
 	/** Blueprint hook when Modak Prasadam is received from a stall */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction|Prasadam")
 	void BP_OnModakPrasadamReceived(AActor* Interactor, float EnergyGranted);
+
+	/** Blueprint hook when prayer sequence begins */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction|Prayer")
+	void BP_OnPrayerStarted(AActor* Interactor, float Duration);
+
+	/** Blueprint hook when prayer sequence ends */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction|Prayer")
+	void BP_OnPrayerCompleted(AActor* Interactor);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Components")
@@ -129,6 +163,49 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction")
 	bool bSingleUse = false;
 
+	// ── Phase 5A Subsystem 2: Prayer Sequence Settings ──
+	/** If true, interacting triggers a cinematic prayer sequence locking movement */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Prayer")
+	bool bTriggersPrayerSequence = false;
+
+	/** Total prayer sequence hold duration in seconds before blending back */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Prayer", meta=(ClampMin=0.5f, Units="s"))
+	float PrayerHoldDuration = 2.2f;
+
+	/** Camera blend-in duration when prayer starts */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Prayer", meta=(ClampMin=0.0f, Units="s"))
+	float PrayerBlendInDuration = 0.8f;
+
+	/** Camera blend-out duration when prayer ends */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Prayer", meta=(ClampMin=0.0f, Units="s"))
+	float PrayerBlendOutDuration = 0.8f;
+
+	/** Relative offset for prayer camera from shrine root */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Prayer")
+	FVector PrayerCameraRelativeOffset = FVector(-280.0f, -100.0f, 120.0f);
+
+	/** Relative look-at focal point for prayer camera */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Prayer")
+	FVector PrayerCameraLookAtOffset = FVector(0.0f, 0.0f, 150.0f);
+
+private:
+	void StartPrayerSequence(AGanapatiPlayerCharacter* PlayerChar);
+	void FinishPrayerSequence(TWeakObjectPtr<AGanapatiPlayerCharacter> WeakPlayerChar, TWeakObjectPtr<APlayerController> WeakPC);
+	void CleanupPrayerCamera();
+
 	/** Track whether single-use has already triggered */
 	bool bHasBeenTriggered = false;
+
+	/** Whether a prayer sequence is currently running on this interactable */
+	bool bIsPrayerActive = false;
+
+	/** Temporary camera actor spawned for the prayer sequence */
+	UPROPERTY(Transient)
+	TObjectPtr<ACameraActor> PrayerCamera;
+
+	/** Timer handle for finishing prayer hold */
+	FTimerHandle PrayerTimerHandle;
+
+	/** Timer handle for completing blend-out and restoring camera target */
+	FTimerHandle PrayerBlendTimerHandle;
 };
