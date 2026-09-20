@@ -1,6 +1,7 @@
 // Copyright Ganapati Project. All Rights Reserved.
 
 #include "Interaction/GanapatiInteractable.h"
+#include "Characters/GanapatiPlayerCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
@@ -45,6 +46,24 @@ void AGanapatiInteractable::TriggerInteraction(AActor* Interactor)
 	}
 
 	bHasBeenTriggered = true;
+
+	// ── Phase 4B Subsystem 2B: Shrine Blessing & Divine Energy Recharge ──
+	if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(Interactor))
+	{
+		if (bRestoresHealth)
+		{
+			PlayerChar->ResetHealth();
+		}
+
+		if (DivineEnergyGranted > 0.0f)
+		{
+			PlayerChar->AddDivineEnergy(DivineEnergyGranted);
+		}
+
+		OnShrineBlessed.Broadcast(PlayerChar, DivineEnergyGranted);
+		BP_OnShrineBlessingGranted(PlayerChar, DivineEnergyGranted);
+	}
+
 	OnInteracted.Broadcast(Interactor, InteractionMessage);
 	BP_OnInteracted(Interactor);
 }

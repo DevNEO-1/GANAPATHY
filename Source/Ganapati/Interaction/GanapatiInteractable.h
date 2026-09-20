@@ -10,6 +10,7 @@ class USphereComponent;
 class UStaticMeshComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiInteractedSignature, AActor*, Interactor, const FText&, Message);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiShrineBlessedSignature, AActor*, Interactor, float, DivineEnergyGranted);
 
 /**
  * AGanapatiInteractable
@@ -48,9 +49,29 @@ public:
 	/** Sphere component defining interaction range */
 	FORCEINLINE USphereComponent* GetTriggerSphere() const { return TriggerSphere; }
 
+	/** Amount of Divine Energy granted by this interactable */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction|Blessing")
+	float GetDivineEnergyGranted() const { return DivineEnergyGranted; }
+
+	/** Sets the Divine Energy amount granted */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Blessing")
+	void SetDivineEnergyGranted(float InEnergy) { DivineEnergyGranted = FMath::Max(0.0f, InEnergy); }
+
+	/** Returns true if this interactable fully restores player health */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction|Blessing")
+	bool DoesRestoreHealth() const { return bRestoresHealth; }
+
+	/** Sets whether health is restored on interaction */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Blessing")
+	void SetRestoresHealth(bool bInRestores) { bRestoresHealth = bInRestores; }
+
 	/** Broadcast when player interacts */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
 	FOnGanapatiInteractedSignature OnInteracted;
+
+	/** Broadcast when shrine blessing is bestowed upon an interactor */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
+	FOnGanapatiShrineBlessedSignature OnShrineBlessed;
 
 protected:
 	virtual void BeginPlay() override;
@@ -58,6 +79,10 @@ protected:
 	/** Blueprint hook for custom visual/audio reactions on interaction */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction")
 	void BP_OnInteracted(AActor* Interactor);
+
+	/** Blueprint hook for shrine blessing visual/audio reactions */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction|Blessing")
+	void BP_OnShrineBlessingGranted(AActor* Interactor, float EnergyGranted);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Components")
@@ -76,6 +101,14 @@ protected:
 	/** Message shown in HUD after interaction */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction")
 	FText InteractionMessage = FText::FromString(TEXT("You offered your prayers with devotion."));
+
+	/** If true, interacting restores the player's health to maximum */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Blessing")
+	bool bRestoresHealth = true;
+
+	/** Amount of Divine Energy granted upon interaction (safely clamped by player's MaxDivineEnergy) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction|Blessing", meta=(ClampMin=0.0f))
+	float DivineEnergyGranted = 50.0f;
 
 	/** If true, can only be interacted with once */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Interaction")
