@@ -6,6 +6,7 @@
 #include "Enemies/GanapatiTrainingDummy.h"
 #include "Enemies/GanapatiAsuraMinion.h"
 #include "Enemies/GanapatiAsuraBrute.h"
+#include "Enemies/GanapatiAsuraCaptain.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/PointLightComponent.h"
@@ -1821,6 +1822,15 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 	World->SpawnActor<AGanapatiAsuraBrute>(
 		AGanapatiAsuraBrute::StaticClass(),
 		BruteSpawn,
+		FRotator(0.0f, 180.0f, 0.0f),
+		SpawnParams
+	);
+
+	// ── 2D. Spawn 1 Asura Captain Mini-Boss Foundation in Combat Courtyard (Phase 5C Subsystem 1) ──
+	const FVector CaptainSpawn = ActorOrigin + FVector(800.0f, 2500.0f, 95.0f);
+	World->SpawnActor<AGanapatiAsuraCaptain>(
+		AGanapatiAsuraCaptain::StaticClass(),
+		CaptainSpawn,
 		FRotator(0.0f, 180.0f, 0.0f),
 		SpawnParams
 	);

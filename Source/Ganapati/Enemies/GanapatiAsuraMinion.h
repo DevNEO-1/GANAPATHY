@@ -90,7 +90,7 @@ protected:
 	void UpdateAI(float DeltaTime);
 
 	/** Initiates melee attack sequence */
-	void StartAttack();
+	virtual void StartAttack();
 
 	/** Executes the physical damage sweep at the peak of the swing */
 	void PerformAttackHitCheck();
@@ -102,7 +102,7 @@ protected:
 	void RecoverFromStagger();
 
 	/** Updates 3D floating health and status text above minion */
-	void UpdateHealthText();
+	virtual void UpdateHealthText();
 
 	/** Resets hit-stop freeze on skeletal mesh */
 	void ResetHitStop();
