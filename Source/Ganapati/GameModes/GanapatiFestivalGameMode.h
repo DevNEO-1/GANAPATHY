@@ -11,7 +11,21 @@ class AGanapatiNPC;
 class AGanapatiInteractable;
 class AGanapatiTrainingDummy;
 class AGanapatiAsuraMinion;
+class AGanapatiAsuraCaptain;
+class AFestivalStreetBuilder;
 class UCameraShakeBase;
+
+/**
+ * Progression states for the Asura Captain mini-boss encounter (Phase 5C Subsystem 3).
+ */
+UENUM(BlueprintType)
+enum class ECaptainEncounterState : uint8
+{
+	Dormant UMETA(DisplayName="Dormant"),
+	Intro UMETA(DisplayName="Intro"),
+	Active UMETA(DisplayName="Active"),
+	Defeated UMETA(DisplayName="Defeated")
+};
 
 /**
  * Progression states for the Courtyard Skirmish combat encounter.
@@ -112,6 +126,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Encounter")
 	void StartCourtyardEncounter();
 
+	/** Returns current state of the Asura Captain mini-boss encounter (Phase 5C Subsystem 3) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Boss")
+	ECaptainEncounterState GetCaptainEncounterState() const { return CaptainEncounterState; }
+
+	/** Returns true if Captain encounter is currently active */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Boss")
+	bool IsCaptainEncounterActive() const { return CaptainEncounterState == ECaptainEncounterState::Active; }
+
+	/** Returns true if Captain encounter is in intro sequence */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Boss")
+	bool IsCaptainEncounterIntro() const { return CaptainEncounterState == ECaptainEncounterState::Intro; }
+
+	/** Returns true if Captain has been defeated */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Boss")
+	bool IsCaptainEncounterDefeated() const { return CaptainEncounterState == ECaptainEncounterState::Defeated; }
+
+	/** Returns active Asura Captain reference */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Boss")
+	AGanapatiAsuraCaptain* GetActiveCaptain() const;
+
+	/** Activates or deactivates the temporary boss ward barrier */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Boss")
+	void SetBossBarrierActive(bool bActive);
+
 public:
 	/** Broadcast when a quest step advances */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Quest|Events")
@@ -181,17 +219,33 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Combat|Encounter")
 	ECourtyardEncounterState EncounterState = ECourtyardEncounterState::NotStarted;
 
+	/** Current state of Asura Captain mini-boss encounter (Phase 5C Subsystem 3) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Combat|Boss")
+	ECaptainEncounterState CaptainEncounterState = ECaptainEncounterState::Dormant;
+
 	/** Camera shake triggered when courtyard combat begins */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Encounter")
 	TSubclassOf<UCameraShakeBase> EncounterStartCameraShakeClass;
+
+	/** Event handler when Asura Captain is defeated (Phase 5C Subsystem 3) */
+	UFUNCTION()
+	void HandleCaptainDied(AGanapatiAsuraMinion* Asura);
 
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<ACameraActor> CinematicCamera;
 
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AGanapatiAsuraCaptain> CachedCaptain;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AFestivalStreetBuilder> CachedStreetBuilder;
+
 	FTimerHandle CinematicTimerHandle;
 	FTimerHandle QuestBindTimerHandle;
 	FTimerHandle CourtyardAlertTimerHandle;
+	FTimerHandle CaptainProximityTimerHandle;
+	FTimerHandle CaptainIntroTimerHandle;
 
 	int32 TotalAsurasSpawned = 0;
 	int32 DefeatedAsurasCount = 0;
@@ -199,4 +253,13 @@ private:
 
 	/** Checks if player has entered the courtyard and triggers skirmish alert toast */
 	void CheckCourtyardProximity();
+
+	/** Checks if player has approached the Asura Captain and triggers boss encounter */
+	void CheckCaptainProximity();
+
+	/** Initiates the Captain mini-boss encounter */
+	void StartCaptainEncounter();
+
+	/** Transitions Captain encounter from Intro to Active */
+	void TransitionCaptainToActive();
 };

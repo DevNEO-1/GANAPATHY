@@ -7,6 +7,7 @@
 #include "Interaction/GanapatiInteractable.h"
 #include "Enemies/GanapatiTrainingDummy.h"
 #include "Enemies/GanapatiAsuraMinion.h"
+#include "Enemies/GanapatiAsuraCaptain.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -343,6 +344,35 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 
 	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Sacred Darshan quest listeners bound to %d NPCs, %d Interactables, %d Dummies, %d Asuras (%d encounter targets)."),
 		NPCs.Num(), Interactables.Num(), Dummies.Num(), Asuras.Num(), TotalAsurasSpawned);
+
+	// 5. Cache StreetBuilder and Asura Captain for Mini-Boss Encounter (Phase 5C Subsystem 3)
+	TArray<AActor*> Builders;
+	UGameplayStatics::GetAllActorsOfClass(World, AFestivalStreetBuilder::StaticClass(), Builders);
+	if (Builders.Num() > 0)
+	{
+		CachedStreetBuilder = Cast<AFestivalStreetBuilder>(Builders[0]);
+	}
+
+	TArray<AActor*> Captains;
+	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiAsuraCaptain::StaticClass(), Captains);
+	if (Captains.Num() > 0)
+	{
+		if (AGanapatiAsuraCaptain* Captain = Cast<AGanapatiAsuraCaptain>(Captains[0]))
+		{
+			CachedCaptain = Captain;
+			Captain->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainDied);
+			Captain->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainDied);
+		}
+	}
+
+	// Start Captain proximity monitoring timer
+	World->GetTimerManager().SetTimer(
+		CaptainProximityTimerHandle,
+		this,
+		&AGanapatiFestivalGameMode::CheckCaptainProximity,
+		0.25f,
+		true
+	);
 }
 
 void AGanapatiFestivalGameMode::AdvanceQuestStep(ESacredDarshanStep ExpectedCurrentStep, ESacredDarshanStep NextStep, const FText& CompletionToastText)
@@ -546,4 +576,147 @@ void AGanapatiFestivalGameMode::CheckCourtyardProximity()
 	{
 		StartCourtyardEncounter();
 	}
+}
+
+void AGanapatiFestivalGameMode::CheckCaptainProximity()
+{
+	if (CaptainEncounterState != ECaptainEncounterState::Dormant)
+	{
+		return;
+	}
+
+	if (!CachedCaptain.IsValid() || CachedCaptain->IsDead())
+	{
+		return;
+	}
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	APawn* PlayerPawn = PC ? PC->GetPawn() : nullptr;
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
+	{
+		if (PlayerChar->IsDead())
+		{
+			SetBossBarrierActive(false);
+			return;
+		}
+	}
+
+	const FVector PlayerLoc = PlayerPawn->GetActorLocation();
+	const FVector CaptainLoc = CachedCaptain->GetActorLocation();
+
+	if (FVector::Dist2D(PlayerLoc, CaptainLoc) <= 850.0f)
+	{
+		StartCaptainEncounter();
+	}
+}
+
+void AGanapatiFestivalGameMode::StartCaptainEncounter()
+{
+	if (CaptainEncounterState != ECaptainEncounterState::Dormant)
+	{
+		return;
+	}
+
+	CaptainEncounterState = ECaptainEncounterState::Intro;
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	APawn* PlayerPawn = PC ? PC->GetPawn() : nullptr;
+
+	// Subtle camera rumble on boss intro
+	if (EncounterStartCameraShakeClass && PC)
+	{
+		PC->ClientStartCameraShake(EncounterStartCameraShakeClass, 0.5f);
+	}
+
+	// Announcement toast on HUD
+	if (PC)
+	{
+		if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+		{
+			HUD->ShowQuestToast(FText::FromString(TEXT("⚔ ASURA CAPTAIN — CORRUPTED SHADOW COMMANDER ⚔")), 3.5f);
+		}
+	}
+
+	// Safe arena ward activation: only seal barrier if player is safely inside courtyard (Y > 1500)
+	if (PlayerPawn && PlayerPawn->GetActorLocation().Y > 1500.0f)
+	{
+		SetBossBarrierActive(true);
+	}
+
+	// Alert the Captain to acquire player and select initial pattern
+	if (CachedCaptain.IsValid())
+	{
+		CachedCaptain->SelectAttackForDistance();
+	}
+
+	// Smooth transition to active combat after 1.5s intro (player controls remain 100% active throughout)
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			CaptainIntroTimerHandle,
+			this,
+			&AGanapatiFestivalGameMode::TransitionCaptainToActive,
+			1.5f,
+			false
+		);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Asura Captain mini-boss encounter triggered!"));
+}
+
+void AGanapatiFestivalGameMode::TransitionCaptainToActive()
+{
+	if (CaptainEncounterState == ECaptainEncounterState::Intro)
+	{
+		CaptainEncounterState = ECaptainEncounterState::Active;
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleCaptainDied(AGanapatiAsuraMinion* Asura)
+{
+	if (CaptainEncounterState == ECaptainEncounterState::Defeated)
+	{
+		return;
+	}
+
+	CaptainEncounterState = ECaptainEncounterState::Defeated;
+
+	// Clear encounter proximity timer
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(CaptainProximityTimerHandle);
+		World->GetTimerManager().ClearTimer(CaptainIntroTimerHandle);
+	}
+
+	// Dissolve arena ward barrier immediately
+	SetBossBarrierActive(false);
+
+	// Celebratory victory toast on HUD
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+		{
+			HUD->ShowQuestToast(FText::FromString(TEXT("✦ ASURA CAPTAIN BANISHED! THE INNER COURTYARD IS PURIFIED! ✦")), 4.0f);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Asura Captain mini-boss defeated and banished!"));
+}
+
+void AGanapatiFestivalGameMode::SetBossBarrierActive(bool bActive)
+{
+	if (CachedStreetBuilder.IsValid())
+	{
+		CachedStreetBuilder->SetBossBarrierActive(bActive);
+	}
+}
+
+AGanapatiAsuraCaptain* AGanapatiFestivalGameMode::GetActiveCaptain() const
+{
+	return CachedCaptain.Get();
 }

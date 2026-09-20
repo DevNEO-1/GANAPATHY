@@ -1671,6 +1671,35 @@ void AFestivalStreetBuilder::BuildCombatAndParkourCourtyard()
 
 	// Courtyard Lighting
 	CreateFestivalLight(TEXT("Court_Light_Center"), CourtCenter + FVector(0.0f, 0.0f, 300.0f), FLinearColor(1.0f, 0.7f, 0.3f), 8000.0f, 1500.0f);
+
+	// Courtyard Entrance Ward Barrier (Phase 5C Subsystem 3)
+	// Inert and hidden by default; activated safely by GameMode during Asura Captain encounter
+	BossBarrierComp = CreateMeshPiece(
+		TEXT("Court_BossBarrier"),
+		CubeMesh,
+		CourtCenter + FVector(0.0f, -550.0f, 160.0f),
+		FRotator::ZeroRotator,
+		FVector(8.0f, 0.5f, 3.2f),
+		false,
+		GlowMaterial
+	);
+	if (BossBarrierComp)
+	{
+		BossBarrierComp->SetVisibility(false);
+	}
+}
+
+void AFestivalStreetBuilder::SetBossBarrierActive(bool bActive)
+{
+	if (BossBarrierComp)
+	{
+		BossBarrierComp->SetVisibility(bActive);
+		BossBarrierComp->SetCollisionEnabled(bActive ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+		if (bActive)
+		{
+			BossBarrierComp->SetCollisionProfileName(TEXT("BlockAll"));
+		}
+	}
 }
 
 void AFestivalStreetBuilder::PopulateWorldActors()

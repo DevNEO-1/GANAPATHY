@@ -5,6 +5,7 @@
 #include "Interaction/GanapatiInteractionComponent.h"
 #include "Components/GanapatiMovementComponent.h"
 #include "GameModes/GanapatiFestivalGameMode.h"
+#include "Enemies/GanapatiAsuraCaptain.h"
 #include "Engine/Canvas.h"
 #include "Engine/Font.h"
 
@@ -25,8 +26,10 @@ void AGanapatiGameHUD::DrawHUD()
 	const float ScreenH = Canvas->ClipY;
 
 	AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(GetOwningPawn());
+	AGanapatiFestivalGameMode* FestGM = Cast<AGanapatiFestivalGameMode>(GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr);
 
 	DrawObjectiveBanner(ScreenW, ScreenH);
+	DrawCaptainBossBar(ScreenW, ScreenH, FestGM);
 	DrawControlsOverlay(ScreenW, ScreenH);
 
 	if (PlayerChar)
@@ -340,5 +343,158 @@ void AGanapatiGameHUD::DrawControlsOverlay(float ScreenW, float ScreenH)
 	{
 		DrawText(Line, FLinearColor(0.85f, 0.85f, 0.85f, 0.85f), BoxX + 15.0f, LineY, nullptr, 0.8f);
 		LineY += 19.0f;
+	}
+}
+
+void AGanapatiGameHUD::DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapatiFestivalGameMode* FestGM)
+{
+	if (!FestGM)
+	{
+		return;
+	}
+
+	const ECaptainEncounterState EncounterState = FestGM->GetCaptainEncounterState();
+	if (EncounterState == ECaptainEncounterState::Dormant && BossBarFadeAlpha <= 0.0f)
+	{
+		return;
+	}
+
+	const float DeltaSeconds = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.016f;
+
+	// Handle alpha fade-in on active/intro and graceful fade-out on defeat
+	if (EncounterState == ECaptainEncounterState::Intro || EncounterState == ECaptainEncounterState::Active)
+	{
+		BossBarFadeAlpha = FMath::Min(1.0f, BossBarFadeAlpha + DeltaSeconds * 2.5f);
+		BossBarDefeatTimer = 0.0f;
+	}
+	else if (EncounterState == ECaptainEncounterState::Defeated)
+	{
+		BossBarDefeatTimer += DeltaSeconds;
+		if (BossBarDefeatTimer > 1.2f)
+		{
+			BossBarFadeAlpha = FMath::Max(0.0f, 1.0f - ((BossBarDefeatTimer - 1.2f) / 2.8f));
+		}
+	}
+	else
+	{
+		BossBarFadeAlpha = FMath::Max(0.0f, BossBarFadeAlpha - DeltaSeconds * 2.0f);
+	}
+
+	if (BossBarFadeAlpha <= 0.001f)
+	{
+		return;
+	}
+
+	AGanapatiAsuraCaptain* Captain = FestGM->GetActiveCaptain();
+
+	// Boss Bar geometry & positioning
+	const float BarW = 620.0f;
+	const float CardH = 62.0f;
+	const float BarX = (ScreenW - BarW) * 0.5f;
+
+	// Anchor below top objective banner; adjust if quest toast or skirmish card is active
+	float BarY = (QuestToastRemainingTime > 0.0f) ? 146.0f : 100.0f;
+	if (FestGM->IsEncounterActive() || FestGM->IsEncounterCompleted())
+	{
+		BarY += 48.0f;
+	}
+
+	// 1. Obsidian card background
+	DrawTintedBox(BarX - 10.0f, BarY, BarW + 20.0f, CardH, FLinearColor(0.02f, 0.02f, 0.03f, 0.85f * BossBarFadeAlpha));
+
+	// 2. Gold filigree frame accents
+	DrawTintedBox(BarX - 10.0f, BarY, BarW + 20.0f, 2.5f, FLinearColor(1.0f, 0.75f, 0.2f, 0.95f * BossBarFadeAlpha));
+	DrawTintedBox(BarX - 10.0f, BarY + CardH - 2.0f, BarW + 20.0f, 2.0f, FLinearColor(1.0f, 0.6f, 0.15f, 0.80f * BossBarFadeAlpha));
+
+	// 3. Header title
+	const FString BossTitle = TEXT("★ ASURA CAPTAIN — CORRUPTED COMMANDER ★");
+	DrawText(BossTitle, FLinearColor(1.0f, 0.88f, 0.4f, BossBarFadeAlpha), BarX + 115.0f, BarY + 6.0f, nullptr, 1.05f);
+
+	// 4. Health Bar Slot & Fill
+	const float SlotY = BarY + 26.0f;
+	const float SlotH = 14.0f;
+
+	// Dark slot frame
+	DrawTintedBox(BarX, SlotY, BarW, SlotH, FLinearColor(0.08f, 0.03f, 0.03f, 0.90f * BossBarFadeAlpha));
+
+	const bool bIsDefeated = (EncounterState == ECaptainEncounterState::Defeated);
+	float CurrentHP = 0.0f;
+	float MaxHP = 250.0f;
+	float HealthPercent = 0.0f;
+
+	if (Captain && !bIsDefeated)
+	{
+		CurrentHP = Captain->GetCurrentHP();
+		MaxHP = FMath::Max(1.0f, Captain->GetMaxHP());
+		HealthPercent = FMath::Clamp(CurrentHP / MaxHP, 0.0f, 1.0f);
+	}
+
+	if (HealthPercent > 0.0f)
+	{
+		// Deep crimson gradient fill
+		DrawTintedBox(BarX, SlotY, BarW * HealthPercent, SlotH, FLinearColor(0.92f, 0.15f, 0.15f, 0.95f * BossBarFadeAlpha));
+	}
+
+	// 5. Centered Health text over bar
+	FString HPText;
+	if (bIsDefeated)
+	{
+		HPText = TEXT("✦ BANISHED ✦");
+	}
+	else
+	{
+		HPText = FString::Printf(TEXT("%.0f / %.0f HP (%.0f%%)"), CurrentHP, MaxHP, HealthPercent * 100.0f);
+	}
+	DrawText(HPText, FLinearColor(1.0f, 1.0f, 1.0f, BossBarFadeAlpha), BarX + 240.0f, SlotY + 1.0f, nullptr, 0.80f);
+
+	// 6. Live Combat State Badge
+	FString StateBadgeText;
+	FLinearColor StateBadgeColor = FLinearColor(0.85f, 0.85f, 0.85f, BossBarFadeAlpha);
+
+	if (bIsDefeated)
+	{
+		StateBadgeText = TEXT("[BANISHED]");
+		StateBadgeColor = FLinearColor(0.5f, 0.5f, 0.5f, BossBarFadeAlpha);
+	}
+	else if (Captain)
+	{
+		if (Captain->GetAIState() == EAsuraAIState::Attacking)
+		{
+			if (Captain->GetCurrentAttackPattern() == ECaptainAttackPattern::HeavyCleave)
+			{
+				StateBadgeText = TEXT("[HEAVY CLEAVE]");
+				StateBadgeColor = FLinearColor(1.0f, 0.4f, 0.1f, BossBarFadeAlpha);
+			}
+			else
+			{
+				StateBadgeText = TEXT("[OVERHEAD SMASH]");
+				StateBadgeColor = FLinearColor(1.0f, 0.15f, 0.15f, BossBarFadeAlpha);
+			}
+		}
+		else if (Captain->IsInRecovery())
+		{
+			StateBadgeText = TEXT("[VULNERABLE - RECOVERY]");
+			StateBadgeColor = FLinearColor(1.0f, 0.85f, 0.1f, BossBarFadeAlpha);
+		}
+		else if (Captain->GetAIState() == EAsuraAIState::Staggered)
+		{
+			StateBadgeText = TEXT("[STAGGER BREAK]");
+			StateBadgeColor = FLinearColor(1.0f, 0.6f, 0.15f, BossBarFadeAlpha);
+		}
+		else if (Captain->GetAIState() == EAsuraAIState::Chasing)
+		{
+			StateBadgeText = TEXT("[ADVANCING]");
+			StateBadgeColor = FLinearColor(0.95f, 0.25f, 0.25f, BossBarFadeAlpha);
+		}
+		else
+		{
+			StateBadgeText = TEXT("[ENGAGED]");
+			StateBadgeColor = FLinearColor(0.8f, 0.3f, 0.3f, BossBarFadeAlpha);
+		}
+	}
+
+	if (!StateBadgeText.IsEmpty())
+	{
+		DrawText(StateBadgeText, StateBadgeColor, BarX + 250.0f, BarY + 43.0f, nullptr, 0.85f);
 	}
 }

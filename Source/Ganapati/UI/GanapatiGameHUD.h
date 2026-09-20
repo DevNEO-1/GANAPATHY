@@ -8,6 +8,8 @@
 
 class AGanapatiPlayerCharacter;
 class UGanapatiInteractionComponent;
+class AGanapatiFestivalGameMode;
+class AGanapatiAsuraCaptain;
 
 /**
  * AGanapatiGameHUD
@@ -39,6 +41,9 @@ protected:
 
 	/** Draws the top cinematic festival objective banner */
 	void DrawObjectiveBanner(float ScreenW, float ScreenH);
+
+	/** Draws the dedicated top-center Asura Captain mini-boss health bar (Phase 5C Subsystem 3) */
+	void DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapatiFestivalGameMode* FestGM);
 
 	/** Draws the health, divine energy, and anti-gravity status bar at bottom left */
 	void DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiPlayerCharacter* PlayerChar);
@@ -91,4 +96,8 @@ private:
 
 	/** Total duration of current quest toast */
 	float QuestToastDuration = 3.5f;
+
+	// ── Phase 5C Subsystem 3: Boss HUD State ──
+	float BossBarFadeAlpha = 0.0f;
+	float BossBarDefeatTimer = 0.0f;
 };

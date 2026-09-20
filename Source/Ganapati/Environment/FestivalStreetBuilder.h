@@ -33,6 +33,10 @@ class GANAPATI_API AFestivalStreetBuilder : public AActor
 public:
 	AFestivalStreetBuilder();
 
+	/** Toggles the temporary courtyard boss encounter ward barrier (Phase 5C Subsystem 3) */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat")
+	void SetBossBarrierActive(bool bActive);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -168,6 +172,10 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> DiyaGlowMat;
+
+	/** Temporary courtyard boss ward barrier component (Phase 5C Subsystem 3) */
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> BossBarrierComp;
 
 	/** Number of wandering NPCs to spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Spawning", meta=(ClampMin=1, ClampMax=20))
