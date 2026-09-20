@@ -1,21 +1,22 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "Characters/GanapatiPlayerCharacter.h"
 #include "Components/GanapatiCombatComponent.h"
 #include "Components/GanapatiMovementComponent.h"
 #include "Interaction/GanapatiInteractionComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraShakeBase.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/World.h"
+#include "TimerManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 
 AGanapatiPlayerCharacter::AGanapatiPlayerCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	// Set capsule size for standard humanoid character
 	GetCapsuleComponent()->InitCapsuleSize(42.0f, 96.0f);
@@ -87,6 +88,23 @@ AGanapatiPlayerCharacter::AGanapatiPlayerCharacter()
 
 	// Tag for AI and EQS recognition
 	Tags.Add(FName(TEXT("Player")));
+
+	// ── Auto-load Camera Shake classes ──
+	static ConstructorHelpers::FClassFinder<UCameraShakeBase> HitEnemyShakeFinder(
+		TEXT("/Game/Variant_Combat/Blueprints/BP_CameraShake_Hit_Enemy"));
+	if (HitEnemyShakeFinder.Succeeded())
+	{
+		MeleeHitCameraShakeClass = HitEnemyShakeFinder.Class;
+	}
+
+	static ConstructorHelpers::FClassFinder<UCameraShakeBase> HitPlayerShakeFinder(
+		TEXT("/Game/Variant_Combat/Blueprints/BP_CameraShake_Hit_Player"));
+	if (HitPlayerShakeFinder.Succeeded())
+	{
+		HeavyAttackCameraShakeClass = HitPlayerShakeFinder.Class;
+		HardLandingCameraShakeClass = HitPlayerShakeFinder.Class;
+		DashCameraShakeClass = HitPlayerShakeFinder.Class;
+	}
 }
 
 void AGanapatiPlayerCharacter::BeginPlay()
@@ -95,14 +113,94 @@ void AGanapatiPlayerCharacter::BeginPlay()
 
 	ResetHealth();
 
+	if (FollowCamera)
+	{
+		FollowCamera->SetFieldOfView(DefaultFOV);
+	}
+	PeakFallVelocityZ = 0.0f;
+
 	if (CombatComponent)
 	{
 		CombatComponent->OnDamageDealt.AddDynamic(this, &AGanapatiPlayerCharacter::HandleDamageDealt);
 	}
 }
 
+void AGanapatiPlayerCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 1. Dynamic FOV smooth interpolation
+	if (FollowCamera)
+	{
+		float TargetFOV = DefaultFOV;
+
+		if (MovementComponent && MovementComponent->IsDashing())
+		{
+			TargetFOV = DashFOV;
+		}
+		else if (MovementComponent && MovementComponent->IsSprinting() && GetVelocity().SizeSquared2D() > 10000.0f)
+		{
+			TargetFOV = SprintFOV;
+		}
+
+		const float CurrentFOV = FollowCamera->FieldOfView;
+		const float InterpSpeed = (TargetFOV > CurrentFOV) ? FOVInterpSpeedIn : FOVInterpSpeedOut;
+		FollowCamera->SetFieldOfView(FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaSeconds, InterpSpeed));
+	}
+
+	// 2. Track peak downward falling velocity for landing impact feedback
+	if (GetCharacterMovement() && GetCharacterMovement()->IsFalling())
+	{
+		const float CurrentVelZ = GetVelocity().Z;
+		if (CurrentVelZ < PeakFallVelocityZ)
+		{
+			PeakFallVelocityZ = CurrentVelZ;
+		}
+	}
+}
+
+void AGanapatiPlayerCharacter::PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale)
+{
+	if (!ShakeClass || Scale <= 0.0f)
+	{
+		return;
+	}
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->ClientStartCameraShake(ShakeClass, Scale);
+	}
+}
+
+void AGanapatiPlayerCharacter::TriggerHitStop(float Duration)
+{
+	if (Duration <= 0.0f)
+	{
+		return;
+	}
+
+	if (USkeletalMeshComponent* CharacterMesh = GetMesh())
+	{
+		CharacterMesh->GlobalAnimRateScale = 0.0f;
+
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(HitStopTimerHandle);
+			World->GetTimerManager().SetTimer(HitStopTimerHandle, FTimerDelegate::CreateWeakLambda(this, [this]()
+			{
+				if (USkeletalMeshComponent* Mesh = GetMesh())
+				{
+					Mesh->GlobalAnimRateScale = 1.0f;
+				}
+			}), Duration, false);
+		}
+	}
+}
+
 void AGanapatiPlayerCharacter::HandleDamageDealt(float Damage, const FVector& ImpactPoint)
 {
+	PlayCameraShake(MeleeHitCameraShakeClass, MeleeHitShakeScale);
+	TriggerHitStop(HitStopDuration);
 	BP_OnDealtDamage(Damage, ImpactPoint);
 }
 
@@ -252,6 +350,12 @@ void AGanapatiPlayerCharacter::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
 
+	if (PeakFallVelocityZ <= HardLandingVelocityThreshold)
+	{
+		HandleHardLanding(Hit, PeakFallVelocityZ);
+	}
+	PeakFallVelocityZ = 0.0f;
+
 	if (MovementComponent)
 	{
 		MovementComponent->NotifyLanded(Hit);
@@ -266,9 +370,20 @@ void AGanapatiPlayerCharacter::Landed(const FHitResult& Hit)
 	}
 }
 
+void AGanapatiPlayerCharacter::HandleHardLanding(const FHitResult& Hit, float ImpactVelocityZ)
+{
+	PlayCameraShake(HardLandingCameraShakeClass, HardLandingShakeScale);
+	BP_OnHardLanding(Hit, ImpactVelocityZ);
+}
+
 void AGanapatiPlayerCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
 {
 	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+
+	if (PrevMovementMode == MOVE_Falling && GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
+	{
+		PeakFallVelocityZ = 0.0f;
+	}
 
 	if (MovementComponent && GetCharacterMovement())
 	{
@@ -349,6 +464,7 @@ void AGanapatiPlayerCharacter::DoDash()
 	}
 
 	MovementComponent->StartDash();
+	PlayCameraShake(DashCameraShakeClass, DashShakeScale);
 }
 
 void AGanapatiPlayerCharacter::DoLightAttackStart()
@@ -381,9 +497,16 @@ void AGanapatiPlayerCharacter::DoChargedAttackStart()
 
 void AGanapatiPlayerCharacter::DoChargedAttackEnd()
 {
+	const bool bWasCharging = CombatComponent && CombatComponent->IsChargingAttack();
+
 	if (CombatComponent)
 	{
 		CombatComponent->StopChargedAttack();
+	}
+
+	if (bWasCharging)
+	{
+		PlayCameraShake(HeavyAttackCameraShakeClass, HeavyAttackShakeScale);
 	}
 }
 

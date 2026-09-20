@@ -13,6 +13,7 @@ class UCameraComponent;
 class UGanapatiCombatComponent;
 class UGanapatiMovementComponent;
 class UGanapatiInteractionComponent;
+class UCameraShakeBase;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiHealthChangedSignature, float, NewHealth, float, MaxHealth);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGanapatiCharacterDiedSignature);
@@ -36,6 +37,8 @@ class GANAPATI_API AGanapatiPlayerCharacter : public ACharacter, public ICombatA
 
 public:
 	AGanapatiPlayerCharacter();
+
+	virtual void Tick(float DeltaSeconds) override;
 
 	// ~begin ICombatAttacker interface
 	virtual void DoAttackTrace(FName DamageSourceBone) override;
@@ -111,6 +114,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Health")
 	void ResetHealth();
 
+	/** Helper to play a camera shake on the owning player controller */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Camera|Shake")
+	void PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale = 1.0f);
+
+	/** Applies a crisp hit-stop pause to the player character's mesh animation */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Feel")
+	void TriggerHitStop(float Duration);
+
 public:
 	/** Returns current health amount */
 	UFUNCTION(BlueprintPure, Category="Ganapati|Health")
@@ -151,8 +162,13 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void Landed(const FHitResult& Hit) override;
+	virtual void HandleHardLanding(const FHitResult& Hit, float ImpactVelocityZ);
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	/** Blueprint implementable hook when a hard landing occurs */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Movement|Feel")
+	void BP_OnHardLanding(const FHitResult& Hit, float ImpactVelocityZ);
 
 	/** Internal callback from CombatComponent OnDamageDealt */
 	UFUNCTION()
@@ -223,7 +239,77 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera", meta=(ClampMin=0.0f, Units="cm"))
 	float ShoulderOffsetDistance = 60.0f;
 
+	// ── Phase 4A: Dynamic FOV ──
+	/** Base field of view when walking or stationary */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|FOV", meta=(ClampMin=60.0f, ClampMax=120.0f, Units="deg"))
+	float DefaultFOV = 90.0f;
+
+	/** Field of view smoothly transitioned to when sprinting */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|FOV", meta=(ClampMin=60.0f, ClampMax=130.0f, Units="deg"))
+	float SprintFOV = 98.0f;
+
+	/** Field of view smoothly transitioned to during a dash burst */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|FOV", meta=(ClampMin=60.0f, ClampMax=140.0f, Units="deg"))
+	float DashFOV = 104.0f;
+
+	/** Speed at which FOV transitions outward (speeding up) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|FOV", meta=(ClampMin=1.0f))
+	float FOVInterpSpeedIn = 8.0f;
+
+	/** Speed at which FOV transitions back to default */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|FOV", meta=(ClampMin=1.0f))
+	float FOVInterpSpeedOut = 6.0f;
+
+	// ── Phase 4A: Camera Impact Shakes ──
+	/** Camera shake played on confirmed melee attack hit */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake")
+	TSubclassOf<UCameraShakeBase> MeleeHitCameraShakeClass;
+
+	/** Intensity scale for melee hit camera shake */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake", meta=(ClampMin=0.0f, ClampMax=2.0f))
+	float MeleeHitShakeScale = 0.45f;
+
+	/** Camera shake played on charged heavy attack release */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake")
+	TSubclassOf<UCameraShakeBase> HeavyAttackCameraShakeClass;
+
+	/** Intensity scale for charged heavy attack release camera shake */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake", meta=(ClampMin=0.0f, ClampMax=2.0f))
+	float HeavyAttackShakeScale = 0.5f;
+
+	/** Camera shake played when landing hard from a significant height */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake")
+	TSubclassOf<UCameraShakeBase> HardLandingCameraShakeClass;
+
+	/** Intensity scale for hard landing camera shake */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake", meta=(ClampMin=0.0f, ClampMax=2.0f))
+	float HardLandingShakeScale = 0.4f;
+
+	/** Camera shake played upon initiating a dash burst */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake")
+	TSubclassOf<UCameraShakeBase> DashCameraShakeClass;
+
+	/** Intensity scale for dash burst camera shake */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake", meta=(ClampMin=0.0f, ClampMax=2.0f))
+	float DashShakeScale = 0.3f;
+
+	// ── Phase 4A: Melee Hit-Stop ──
+	/** Duration in seconds to freeze the mesh animation pose on confirmed melee hit */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Feel", meta=(ClampMin=0.01f, ClampMax=0.2f, Units="s"))
+	float HitStopDuration = 0.05f;
+
+	// ── Phase 4A: Landing Feedback ──
+	/** Negative Z velocity threshold to trigger a hard landing */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Movement|Feel", meta=(ClampMax=0.0f, Units="cm/s"))
+	float HardLandingVelocityThreshold = -1000.0f;
+
 private:
 	bool bIsDead = false;
 	bool bIsRightShoulder = true;
+
+	/** Peak downward falling velocity (negative) reached during current fall */
+	float PeakFallVelocityZ = 0.0f;
+
+	/** Timer handle for restoring animation rate after hit-stop */
+	FTimerHandle HitStopTimerHandle;
 };
