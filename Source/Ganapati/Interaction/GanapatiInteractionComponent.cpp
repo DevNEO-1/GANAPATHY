@@ -7,6 +7,7 @@
 #include "Engine/OverlapResult.h"
 #include "CollisionQueryParams.h"
 #include "Kismet/GameplayStatics.h"
+#include "World/GanapatiWorldSubsystem.h"
 
 UGanapatiInteractionComponent::UGanapatiInteractionComponent()
 {
@@ -21,10 +22,19 @@ void UGanapatiInteractionComponent::BeginPlay()
 	// Ensure the Ganesh Pandal shrine interactable exists in the world
 	if (UWorld* World = GetWorld())
 	{
-		TArray<AActor*> ExistingInteractables;
-		UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), ExistingInteractables);
+		bool bHasInteractables = false;
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			bHasInteractables = (Subsystem->GetRegisteredInteractables().Num() > 0);
+		}
+		else
+		{
+			TArray<AActor*> ExistingInteractables;
+			UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), ExistingInteractables);
+			bHasInteractables = (ExistingInteractables.Num() > 0);
+		}
 
-		if (ExistingInteractables.Num() == 0)
+		if (!bHasInteractables)
 		{
 			// The Ganesh Pandal altar is located at (2300, 0, 90) at the end of the festival street
 			const FVector PandalShrineLocation(2300.0f, 0.0f, 90.0f);
@@ -82,13 +92,28 @@ void UGanapatiInteractionComponent::UpdateFocusedInteractable()
 	AGanapatiInteractable* BestInteractable = nullptr;
 	float ClosestDistSq = RadiusSq;
 
-	// Query all interactable actors in the world directly to guarantee 100% reliable detection
-	TArray<AActor*> Candidates;
-	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), Candidates);
-
-	for (AActor* CandidateActor : Candidates)
+	// Query interactable actors via WorldSubsystem or fallback
+	TArray<AGanapatiInteractable*> Candidates;
+	if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
 	{
-		if (AGanapatiInteractable* Candidate = Cast<AGanapatiInteractable>(CandidateActor))
+		Candidates = Subsystem->GetRegisteredInteractables();
+	}
+	else
+	{
+		TArray<AActor*> CandidateActors;
+		UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), CandidateActors);
+		for (AActor* CandidateActor : CandidateActors)
+		{
+			if (AGanapatiInteractable* Candidate = Cast<AGanapatiInteractable>(CandidateActor))
+			{
+				Candidates.Add(Candidate);
+			}
+		}
+	}
+
+	for (AGanapatiInteractable* Candidate : Candidates)
+	{
+		if (Candidate)
 		{
 			float DistSq = FVector::DistSquared(OwnerLocation, Candidate->GetActorLocation());
 			if (DistSq < ClosestDistSq)

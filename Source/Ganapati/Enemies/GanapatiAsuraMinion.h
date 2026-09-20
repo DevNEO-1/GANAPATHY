@@ -85,6 +85,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** Core AI state tick */
 	virtual void UpdateAI(float DeltaTime);

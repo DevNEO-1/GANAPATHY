@@ -247,6 +247,43 @@ protected:
 	UFUNCTION()
 	void HandleAsuraDied(AGanapatiAsuraMinion* Asura);
 
+	// ── Phase 6A: Streaming-Safe Subsystem Registration Event Handlers ──
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleNPCRegistered(AGanapatiNPC* NPC);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleNPCUnregistered(AGanapatiNPC* NPC);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleInteractableRegistered(AGanapatiInteractable* Interactable);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleInteractableUnregistered(AGanapatiInteractable* Interactable);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleTrainingDummyRegistered(AGanapatiTrainingDummy* Dummy);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleTrainingDummyUnregistered(AGanapatiTrainingDummy* Dummy);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleAsuraRegistered(AGanapatiAsuraMinion* Asura);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleAsuraUnregistered(AGanapatiAsuraMinion* Asura);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleCaptainRegistered(AGanapatiAsuraCaptain* Captain);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleCaptainUnregistered(AGanapatiAsuraCaptain* Captain);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleStreetBuilderRegistered(AFestivalStreetBuilder* StreetBuilder);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
+	void HandleStreetBuilderUnregistered(AFestivalStreetBuilder* StreetBuilder);
+
 	/** Blueprint hook when quest step advances */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Quest")
 	void BP_OnQuestStepAdvanced(ESacredDarshanStep CompletedStep, ESacredDarshanStep NewStep);
@@ -311,11 +348,14 @@ private:
 	TWeakObjectPtr<AFestivalStreetBuilder> CachedStreetBuilder;
 
 	FTimerHandle CinematicTimerHandle;
-	FTimerHandle QuestBindTimerHandle;
 	FTimerHandle CourtyardAlertTimerHandle;
 	FTimerHandle CaptainProximityTimerHandle;
 	FTimerHandle CaptainIntroTimerHandle;
 	FTimerHandle DivineMomentTimerHandle;
+
+	// ── Phase 6A: Streaming-safe encounter tracking sets ──
+	TSet<TWeakObjectPtr<AGanapatiAsuraMinion>> TrackedEncounterAsuras;
+	TSet<TWeakObjectPtr<AGanapatiAsuraMinion>> TrackedDefeatedAsuras;
 
 	int32 TotalAsurasSpawned = 0;
 	int32 DefeatedAsurasCount = 0;

@@ -7,6 +7,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
+#include "World/GanapatiWorldSubsystem.h"
 
 AGanapatiTrainingDummy::AGanapatiTrainingDummy()
 {
@@ -24,28 +25,36 @@ AGanapatiTrainingDummy::AGanapatiTrainingDummy()
 	BasePlate->SetRelativeScale3D(FVector(1.4f, 1.4f, 0.15f));
 	BasePlate->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+	// Try loading cylinder mesh for base
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> BaseMeshFinder(
+		TEXT("/Game/LevelPrototyping/Meshes/SM_Cylinder.SM_Cylinder"));
+	if (BaseMeshFinder.Succeeded())
+	{
+		BasePlate->SetStaticMesh(BaseMeshFinder.Object);
+	}
+
 	DummyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DummyMesh"));
 	DummyMesh->SetupAttachment(CapsuleComponent);
 	DummyMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -95.0f));
-	DummyMesh->SetRelativeScale3D(FVector(0.8f, 0.8f, 1.8f));
-	DummyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DummyMesh->SetRelativeScale3D(FVector(0.8f, 0.8f, 1.9f));
+	DummyMesh->SetCollisionProfileName(TEXT("NoCollision"));
 
+	// Try loading cylinder mesh for dummy body
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> DummyMeshFinder(
+		TEXT("/Game/LevelPrototyping/Meshes/SM_Cylinder.SM_Cylinder"));
+	if (DummyMeshFinder.Succeeded())
+	{
+		DummyMesh->SetStaticMesh(DummyMeshFinder.Object);
+	}
+
+	// 3D overhead floating health display
 	FloatingHealthText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("FloatingHealthText"));
 	FloatingHealthText->SetupAttachment(CapsuleComponent);
-	FloatingHealthText->SetRelativeLocation(FVector(0.0f, 0.0f, 115.0f));
+	FloatingHealthText->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
 	FloatingHealthText->SetHorizontalAlignment(EHTA_Center);
 	FloatingHealthText->SetVerticalAlignment(EVRTA_TextCenter);
-	FloatingHealthText->SetWorldSize(28.0f);
-	FloatingHealthText->SetTextRenderColor(FColor(255, 215, 0)); // Golden yellow
-
-	// Load prototype mesh for cylinder body
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMeshFinder(
-		TEXT("/Game/LevelPrototyping/Meshes/SM_Cylinder.SM_Cylinder"));
-	if (CylinderMeshFinder.Succeeded())
-	{
-		DummyMesh->SetStaticMesh(CylinderMeshFinder.Object);
-		BasePlate->SetStaticMesh(CylinderMeshFinder.Object);
-	}
+	FloatingHealthText->SetWorldSize(22.0f);
+	FloatingHealthText->SetTextRenderColor(FColor(255, 200, 50));
 
 	Tags.Add(FName(TEXT("Enemy")));
 	Tags.Add(FName(TEXT("Target")));
@@ -55,11 +64,33 @@ void AGanapatiTrainingDummy::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->RegisterTrainingDummy(this);
+		}
+	}
+
 	CurrentHP = MaxHP;
 	InitialLocation = GetActorLocation();
 	InitialRotation = GetActorRotation();
 
 	UpdateHealthText();
+}
+
+void AGanapatiTrainingDummy::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->UnregisterTrainingDummy(this);
+		}
+		World->GetTimerManager().ClearTimer(RespawnTimerHandle);
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AGanapatiTrainingDummy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector& DamageLocation, const FVector& DamageImpulse)

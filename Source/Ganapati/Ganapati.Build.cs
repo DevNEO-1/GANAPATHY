@@ -33,6 +33,7 @@ public class Ganapati : ModuleRules
 			"Ganapati/NPCs",
 			"Ganapati/Enemies",
 			"Ganapati/Interaction",
+			"Ganapati/World",
 			"Ganapati/UI",
 			"Ganapati/Variant_Platforming",
 			"Ganapati/Variant_Platforming/Animation",

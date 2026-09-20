@@ -10,6 +10,7 @@
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "UObject/ConstructorHelpers.h"
+#include "World/GanapatiWorldSubsystem.h"
 
 AGanapatiInteractable::AGanapatiInteractable()
 {
@@ -41,10 +42,26 @@ AGanapatiInteractable::AGanapatiInteractable()
 void AGanapatiInteractable::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->RegisterInteractable(this);
+		}
+	}
 }
 
 void AGanapatiInteractable::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->UnregisterInteractable(this);
+		}
+	}
+
 	CleanupPrayerCamera();
 	bIsPrayerActive = false;
 	Super::EndPlay(EndPlayReason);

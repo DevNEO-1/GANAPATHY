@@ -8,6 +8,7 @@
 #include "Enemies/GanapatiTrainingDummy.h"
 #include "Enemies/GanapatiAsuraMinion.h"
 #include "Enemies/GanapatiAsuraCaptain.h"
+#include "World/GanapatiWorldSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -77,17 +78,11 @@ void AGanapatiFestivalGameMode::BeginPlay()
 	EnsureFestivalEnvironment();
 	PlayOpeningCinematic();
 
-	// Bind quest event listeners (slightly deferred to ensure spawned street actors have initialized)
+	// Bind quest and encounter listeners via streaming-safe subsystem
+	BindQuestListeners();
+
 	if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().SetTimer(
-			QuestBindTimerHandle,
-			this,
-			&AGanapatiFestivalGameMode::BindQuestListeners,
-			0.2f,
-			false
-		);
-
 		// Periodically check if player enters courtyard skirmish zone
 		World->GetTimerManager().SetTimer(
 			CourtyardAlertTimerHandle,
@@ -141,10 +136,23 @@ void AGanapatiFestivalGameMode::EnsureFestivalEnvironment()
 	}
 
 	// 2. Check if a FestivalStreetBuilder already exists in the level
-	TArray<AActor*> ExistingBuilders;
-	UGameplayStatics::GetAllActorsOfClass(World, AFestivalStreetBuilder::StaticClass(), ExistingBuilders);
+	AFestivalStreetBuilder* ExistingBuilder = nullptr;
+	if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+	{
+		ExistingBuilder = Subsystem->GetRegisteredStreetBuilder();
+	}
 
-	if (ExistingBuilders.Num() == 0)
+	if (!ExistingBuilder)
+	{
+		TArray<AActor*> ExistingBuilders;
+		UGameplayStatics::GetAllActorsOfClass(World, AFestivalStreetBuilder::StaticClass(), ExistingBuilders);
+		if (ExistingBuilders.Num() > 0)
+		{
+			ExistingBuilder = Cast<AFestivalStreetBuilder>(ExistingBuilders[0]);
+		}
+	}
+
+	if (!ExistingBuilder)
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -303,88 +311,68 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 		return;
 	}
 
-	// 1. Bind to Devotee NPCs for Step 1 (Halwai Anand dialogue)
-	TArray<AActor*> NPCs;
-	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiNPC::StaticClass(), NPCs);
-	for (AActor* Actor : NPCs)
+	UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>();
+	if (Subsystem)
 	{
-		if (AGanapatiNPC* NPC = Cast<AGanapatiNPC>(Actor))
+		// 1. Bind to Subsystem registration / unregistration multicast delegates
+		Subsystem->OnNPCRegistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleNPCRegistered);
+		Subsystem->OnNPCRegistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleNPCRegistered);
+		Subsystem->OnNPCUnregistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleNPCUnregistered);
+		Subsystem->OnNPCUnregistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleNPCUnregistered);
+
+		Subsystem->OnInteractableRegistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableRegistered);
+		Subsystem->OnInteractableRegistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableRegistered);
+		Subsystem->OnInteractableUnregistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableUnregistered);
+		Subsystem->OnInteractableUnregistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableUnregistered);
+
+		Subsystem->OnTrainingDummyRegistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleTrainingDummyRegistered);
+		Subsystem->OnTrainingDummyRegistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleTrainingDummyRegistered);
+		Subsystem->OnTrainingDummyUnregistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleTrainingDummyUnregistered);
+		Subsystem->OnTrainingDummyUnregistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleTrainingDummyUnregistered);
+
+		Subsystem->OnAsuraRegistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraRegistered);
+		Subsystem->OnAsuraRegistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraRegistered);
+		Subsystem->OnAsuraUnregistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraUnregistered);
+		Subsystem->OnAsuraUnregistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraUnregistered);
+
+		Subsystem->OnCaptainRegistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainRegistered);
+		Subsystem->OnCaptainRegistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainRegistered);
+		Subsystem->OnCaptainUnregistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainUnregistered);
+		Subsystem->OnCaptainUnregistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainUnregistered);
+
+		Subsystem->OnStreetBuilderRegistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleStreetBuilderRegistered);
+		Subsystem->OnStreetBuilderRegistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleStreetBuilderRegistered);
+		Subsystem->OnStreetBuilderUnregistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleStreetBuilderUnregistered);
+		Subsystem->OnStreetBuilderUnregistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleStreetBuilderUnregistered);
+
+		// 2. Process all actors already registered before GameMode initialized
+		for (AGanapatiNPC* NPC : Subsystem->GetRegisteredNPCs())
 		{
-			NPC->OnNPCDialogueSpoken.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleNPCDialogueSpoken);
-			NPC->OnNPCDialogueSpoken.AddDynamic(this, &AGanapatiFestivalGameMode::HandleNPCDialogueSpoken);
+			HandleNPCRegistered(NPC);
+		}
+		for (AGanapatiInteractable* Interactable : Subsystem->GetRegisteredInteractables())
+		{
+			HandleInteractableRegistered(Interactable);
+		}
+		for (AGanapatiTrainingDummy* Dummy : Subsystem->GetRegisteredTrainingDummies())
+		{
+			HandleTrainingDummyRegistered(Dummy);
+		}
+		for (AGanapatiAsuraMinion* Asura : Subsystem->GetRegisteredAsuras())
+		{
+			HandleAsuraRegistered(Asura);
+		}
+		if (AGanapatiAsuraCaptain* Captain = Subsystem->GetRegisteredCaptain())
+		{
+			HandleCaptainRegistered(Captain);
+		}
+		if (AFestivalStreetBuilder* Builder = Subsystem->GetRegisteredStreetBuilder())
+		{
+			HandleStreetBuilderRegistered(Builder);
 		}
 	}
 
-	// 2. Bind to Interactables for Step 2 (Modak Stall) and Step 3 (Grand Pandal Prayer)
-	TArray<AActor*> Interactables;
-	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), Interactables);
-	for (AActor* Actor : Interactables)
-	{
-		if (AGanapatiInteractable* Interactable = Cast<AGanapatiInteractable>(Actor))
-		{
-			Interactable->OnInteracted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableInteracted);
-			Interactable->OnInteracted.AddDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableInteracted);
-
-			Interactable->OnPrayerCompleted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandlePrayerCompleted);
-			Interactable->OnPrayerCompleted.AddDynamic(this, &AGanapatiFestivalGameMode::HandlePrayerCompleted);
-		}
-	}
-
-	// 3. Bind to Training Dummy for Step 4 (Confirmed Combat Damage)
-	TArray<AActor*> Dummies;
-	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiTrainingDummy::StaticClass(), Dummies);
-	for (AActor* Actor : Dummies)
-	{
-		if (AGanapatiTrainingDummy* Dummy = Cast<AGanapatiTrainingDummy>(Actor))
-		{
-			Dummy->OnDamageConfirmed.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleDummyDamageConfirmed);
-			Dummy->OnDamageConfirmed.AddDynamic(this, &AGanapatiFestivalGameMode::HandleDummyDamageConfirmed);
-		}
-	}
-
-	// 4. Bind to Asura Minions for Courtyard Skirmish Encounter (Phase 5B Subsystem 1)
-	TArray<AActor*> Asuras;
-	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiAsuraMinion::StaticClass(), Asuras);
-	TotalAsurasSpawned = 0;
-	DefeatedAsurasCount = 0;
-
-	for (AActor* Actor : Asuras)
-	{
-		if (AGanapatiAsuraMinion* Asura = Cast<AGanapatiAsuraMinion>(Actor))
-		{
-			if (Asura->CountsTowardEncounter())
-			{
-				++TotalAsurasSpawned;
-				Asura->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
-				Asura->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
-			}
-		}
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Sacred Darshan quest listeners bound to %d NPCs, %d Interactables, %d Dummies, %d Asuras (%d encounter targets)."),
-		NPCs.Num(), Interactables.Num(), Dummies.Num(), Asuras.Num(), TotalAsurasSpawned);
-
-	// 5. Cache StreetBuilder and Asura Captain for Mini-Boss Encounter (Phase 5C Subsystem 3)
-	TArray<AActor*> Builders;
-	UGameplayStatics::GetAllActorsOfClass(World, AFestivalStreetBuilder::StaticClass(), Builders);
-	if (Builders.Num() > 0)
-	{
-		CachedStreetBuilder = Cast<AFestivalStreetBuilder>(Builders[0]);
-	}
-
-	TArray<AActor*> Captains;
-	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiAsuraCaptain::StaticClass(), Captains);
-	if (Captains.Num() > 0)
-	{
-		if (AGanapatiAsuraCaptain* Captain = Cast<AGanapatiAsuraCaptain>(Captains[0]))
-		{
-			CachedCaptain = Captain;
-			Captain->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainDied);
-			Captain->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainDied);
-		}
-	}
-
-	// 6. Bind to Player Character death event for boss fight reset (Phase 5C Subsystem 4)
+	// 3. Bind to Player Character death event for boss fight reset (Phase 5C Subsystem 4)
 	if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(World, 0))
 	{
 		if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
@@ -394,7 +382,7 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 		}
 	}
 
-	// Start Captain proximity monitoring timer
+	// 4. Start Captain proximity monitoring timer
 	World->GetTimerManager().SetTimer(
 		CaptainProximityTimerHandle,
 		this,
@@ -402,6 +390,152 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 		0.25f,
 		true
 	);
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Reactive streaming listeners bound via UGanapatiWorldSubsystem."));
+}
+
+void AGanapatiFestivalGameMode::HandleNPCRegistered(AGanapatiNPC* NPC)
+{
+	if (!NPC)
+	{
+		return;
+	}
+
+	NPC->OnNPCDialogueSpoken.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleNPCDialogueSpoken);
+	NPC->OnNPCDialogueSpoken.AddDynamic(this, &AGanapatiFestivalGameMode::HandleNPCDialogueSpoken);
+}
+
+void AGanapatiFestivalGameMode::HandleNPCUnregistered(AGanapatiNPC* NPC)
+{
+	if (!NPC)
+	{
+		return;
+	}
+
+	NPC->OnNPCDialogueSpoken.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleNPCDialogueSpoken);
+}
+
+void AGanapatiFestivalGameMode::HandleInteractableRegistered(AGanapatiInteractable* Interactable)
+{
+	if (!Interactable)
+	{
+		return;
+	}
+
+	Interactable->OnInteracted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableInteracted);
+	Interactable->OnInteracted.AddDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableInteracted);
+
+	Interactable->OnPrayerCompleted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandlePrayerCompleted);
+	Interactable->OnPrayerCompleted.AddDynamic(this, &AGanapatiFestivalGameMode::HandlePrayerCompleted);
+}
+
+void AGanapatiFestivalGameMode::HandleInteractableUnregistered(AGanapatiInteractable* Interactable)
+{
+	if (!Interactable)
+	{
+		return;
+	}
+
+	Interactable->OnInteracted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableInteracted);
+	Interactable->OnPrayerCompleted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandlePrayerCompleted);
+}
+
+void AGanapatiFestivalGameMode::HandleTrainingDummyRegistered(AGanapatiTrainingDummy* Dummy)
+{
+	if (!Dummy)
+	{
+		return;
+	}
+
+	Dummy->OnDamageConfirmed.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleDummyDamageConfirmed);
+	Dummy->OnDamageConfirmed.AddDynamic(this, &AGanapatiFestivalGameMode::HandleDummyDamageConfirmed);
+}
+
+void AGanapatiFestivalGameMode::HandleTrainingDummyUnregistered(AGanapatiTrainingDummy* Dummy)
+{
+	if (!Dummy)
+	{
+		return;
+	}
+
+	Dummy->OnDamageConfirmed.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleDummyDamageConfirmed);
+}
+
+void AGanapatiFestivalGameMode::HandleAsuraRegistered(AGanapatiAsuraMinion* Asura)
+{
+	if (!Asura)
+	{
+		return;
+	}
+
+	if (Asura->CountsTowardEncounter())
+	{
+		TrackedEncounterAsuras.Add(Asura);
+		TotalAsurasSpawned = TrackedEncounterAsuras.Num();
+
+		Asura->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+		Asura->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+
+		UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Registered encounter target [%s] (Total: %d)"),
+			*Asura->GetName(), TotalAsurasSpawned);
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleAsuraUnregistered(AGanapatiAsuraMinion* Asura)
+{
+	if (!Asura)
+	{
+		return;
+	}
+
+	Asura->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+}
+
+void AGanapatiFestivalGameMode::HandleCaptainRegistered(AGanapatiAsuraCaptain* Captain)
+{
+	if (!Captain)
+	{
+		return;
+	}
+
+	CachedCaptain = Captain;
+	Captain->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainDied);
+	Captain->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainDied);
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Registered and cached Asura Captain [%s]"), *Captain->GetName());
+}
+
+void AGanapatiFestivalGameMode::HandleCaptainUnregistered(AGanapatiAsuraCaptain* Captain)
+{
+	if (CachedCaptain == Captain)
+	{
+		if (Captain)
+		{
+			Captain->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleCaptainDied);
+		}
+		CachedCaptain.Reset();
+		UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Unregistered Asura Captain"));
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleStreetBuilderRegistered(AFestivalStreetBuilder* StreetBuilder)
+{
+	if (!StreetBuilder)
+	{
+		return;
+	}
+
+	CachedStreetBuilder = StreetBuilder;
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Registered and cached FestivalStreetBuilder [%s]"), *StreetBuilder->GetName());
+}
+
+void AGanapatiFestivalGameMode::HandleStreetBuilderUnregistered(AFestivalStreetBuilder* StreetBuilder)
+{
+	if (CachedStreetBuilder == StreetBuilder)
+	{
+		CachedStreetBuilder.Reset();
+		UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Unregistered FestivalStreetBuilder"));
+	}
 }
 
 void AGanapatiFestivalGameMode::AdvanceQuestStep(ESacredDarshanStep ExpectedCurrentStep, ESacredDarshanStep NextStep, const FText& CompletionToastText)
@@ -521,7 +655,15 @@ void AGanapatiFestivalGameMode::HandleDummyDamageConfirmed(AGanapatiTrainingDumm
 
 void AGanapatiFestivalGameMode::HandleAsuraDied(AGanapatiAsuraMinion* Asura)
 {
-	++DefeatedAsurasCount;
+	if (Asura && Asura->CountsTowardEncounter())
+	{
+		TrackedDefeatedAsuras.Add(Asura);
+		DefeatedAsurasCount = TrackedDefeatedAsuras.Num();
+	}
+	else
+	{
+		++DefeatedAsurasCount;
+	}
 
 	UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: Asura defeated (%d/%d)"), DefeatedAsurasCount, TotalAsurasSpawned);
 

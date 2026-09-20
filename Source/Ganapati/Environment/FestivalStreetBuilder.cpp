@@ -14,6 +14,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "World/GanapatiWorldSubsystem.h"
 
 AFestivalStreetBuilder::AFestivalStreetBuilder()
 {
@@ -112,6 +113,14 @@ void AFestivalStreetBuilder::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->RegisterStreetBuilder(this);
+		}
+	}
+
 	if (!bHasConstructed)
 	{
 		InitializeFestivalMaterials();
@@ -119,6 +128,19 @@ void AFestivalStreetBuilder::BeginPlay()
 		PopulateWorldActors();
 		bHasConstructed = true;
 	}
+}
+
+void AFestivalStreetBuilder::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->UnregisterStreetBuilder(this);
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 UStaticMeshComponent* AFestivalStreetBuilder::CreateMeshPiece(

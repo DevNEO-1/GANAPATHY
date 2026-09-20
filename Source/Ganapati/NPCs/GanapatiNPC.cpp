@@ -10,6 +10,7 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
+#include "World/GanapatiWorldSubsystem.h"
 
 AGanapatiNPC::AGanapatiNPC()
 {
@@ -51,6 +52,14 @@ AGanapatiNPC::AGanapatiNPC()
 void AGanapatiNPC::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->RegisterNPC(this);
+		}
+	}
 
 	SpawnOrigin = GetActorLocation();
 	TargetLocation = SpawnOrigin;
@@ -112,6 +121,11 @@ void AGanapatiNPC::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (UWorld* World = GetWorld())
 	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->UnregisterNPC(this);
+		}
+
 		World->GetTimerManager().ClearTimer(ConversationTimerHandle);
 		World->GetTimerManager().ClearTimer(StateTimerHandle);
 	}

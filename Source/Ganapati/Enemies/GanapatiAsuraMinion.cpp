@@ -10,6 +10,7 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
+#include "World/GanapatiWorldSubsystem.h"
 
 AGanapatiAsuraMinion::AGanapatiAsuraMinion()
 {
@@ -63,11 +64,36 @@ void AGanapatiAsuraMinion::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->RegisterAsuraMinion(this);
+		}
+	}
+
 	CurrentHP = MaxHP;
 	SpawnLocation = GetActorLocation();
 	CurrentState = EAsuraAIState::Idle;
 
 	UpdateHealthText();
+}
+
+void AGanapatiAsuraMinion::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->UnregisterAsuraMinion(this);
+		}
+		World->GetTimerManager().ClearTimer(AttackWindupTimerHandle);
+		World->GetTimerManager().ClearTimer(AttackRecoveryTimerHandle);
+		World->GetTimerManager().ClearTimer(StaggerTimerHandle);
+		World->GetTimerManager().ClearTimer(HitStopTimerHandle);
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AGanapatiAsuraMinion::Tick(float DeltaTime)
