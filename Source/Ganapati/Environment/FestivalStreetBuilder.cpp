@@ -1798,26 +1798,84 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 		SpawnParams
 	);
 
-	// ── 3. Spawn Devotee NPCs along the Festival Street ──
-	const FVector NPCSpawnPositions[] = {
-		FVector(-400.0f, -200.0f, 50.0f),
-		FVector(100.0f, 250.0f, 50.0f),
-		FVector(700.0f, -180.0f, 50.0f),
-		FVector(1400.0f, 200.0f, 50.0f),
-		FVector(1800.0f, -100.0f, 50.0f)
+	// ── 3. Spawn Devotee NPCs along the Festival Street (Phase 5A Subsystem 3) ──
+	struct FNPCRoleSpec
+	{
+		FVector Offset;
+		FString Name;
+		TArray<FText> Dialogues;
 	};
 
-	int32 Count = FMath::Min(NPCSpawnCount, static_cast<int32>(UE_ARRAY_COUNT(NPCSpawnPositions)));
+	const FNPCRoleSpec NPCSpecs[] = {
+		// NPC 0: Near Entrance & Modak Prasadam Stall
+		{
+			FVector(-400.0f, -200.0f, 50.0f),
+			TEXT("Halwai Anand (Sweetmaker)"),
+			{
+				FText::FromString(TEXT("Namaste! Fresh Ukadiche Modaks right from the steamer! Have you tasted one at my stall?")),
+				FText::FromString(TEXT("Lord Ganesha loves 21 modaks, made with pure jaggery, fresh coconut, and fragrant cardamom!")),
+				FText::FromString(TEXT("Eat some sacred prasadam, dear friend, and feel your divine energy surge!"))
+			}
+		},
+		// NPC 1: Near Wadas & Chowk Entrance
+		{
+			FVector(100.0f, 250.0f, 50.0f),
+			TEXT("Kaki Sunita (Elder Devotee)"),
+			{
+				FText::FromString(TEXT("Ganpati Bappa Morya! Look at the vibrant rangolis along the street—our youth made them with pure devotion.")),
+				FText::FromString(TEXT("Every year Bappa brings so much warmth and happiness to our wada. May he bless you with prosperity!")),
+				FText::FromString(TEXT("Listen closely to the temple bells ringing... they wash away all weariness and doubts."))
+			}
+		},
+		// NPC 2: At Grand Chowk Plaza
+		{
+			FVector(700.0f, -180.0f, 50.0f),
+			TEXT("Rohan (Dhol Player)"),
+			{
+				FText::FromString(TEXT("Aala re aala, Ganpati aala! Our Dhol-Tasha troupe is warming up for the grand evening procession!")),
+				FText::FromString(TEXT("When the dhol beats start, nobody can stand still! Even the courtyard walls shake with joyous rhythm!")),
+				FText::FromString(TEXT("Feel that divine rhythm in your chest! Ganpati Bappa Morya, Mangal Murti Morya!"))
+			}
+		},
+		// NPC 3: At Pandal Entrance Stairs & Diyas
+		{
+			FVector(1400.0f, 200.0f, 50.0f),
+			TEXT("Pujari Shastriji (Temple Priest)"),
+			{
+				FText::FromString(TEXT("Om Gan Ganapataye Namaha! Welcome to the sacred sanctum of Lord Vighnaharta.")),
+				FText::FromString(TEXT("Step onto the altar and offer your heartfelt prayers with [E]. The Lord grants full health and divine radiance.")),
+				FText::FromString(TEXT("The four arms of Ganesha hold the noose, the goad, the sweet modak, and the blessing of fearlessness."))
+			}
+		},
+		// NPC 4: Near Inner Sanctum Altar Approach
+		{
+			FVector(1800.0f, -100.0f, 50.0f),
+			TEXT("Tukaram (Murti Sculptor)"),
+			{
+				FText::FromString(TEXT("I sculpted this grand idol with sacred Shadu clay from the riverbank, following ancient shastra.")),
+				FText::FromString(TEXT("See how compassionate his eyes are? In clay he arrives, and to the holy waters he returns during Visarjan.")),
+				FText::FromString(TEXT("A true devotee sees the divine in the simplest earth. Keep your heart pure and steadfast on your journey."))
+			}
+		}
+	};
+
+	const int32 Count = FMath::Min(NPCSpawnCount, static_cast<int32>(UE_ARRAY_COUNT(NPCSpecs)));
 	for (int32 i = 0; i < Count; ++i)
 	{
-		FVector SpawnLoc = ActorOrigin + NPCSpawnPositions[i];
+		const FNPCRoleSpec& Spec = NPCSpecs[i];
+		FVector SpawnLoc = ActorOrigin + Spec.Offset;
 		FRotator SpawnRot(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f);
 
-		World->SpawnActor<AGanapatiNPC>(
+		AGanapatiNPC* NPC = World->SpawnActor<AGanapatiNPC>(
 			AGanapatiNPC::StaticClass(),
 			SpawnLoc,
 			SpawnRot,
 			SpawnParams
 		);
+
+		if (NPC)
+		{
+			NPC->SetNPCProfile(Spec.Name, Spec.Dialogues);
+		}
 	}
 }
