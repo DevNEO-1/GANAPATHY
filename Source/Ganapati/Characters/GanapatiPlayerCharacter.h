@@ -17,6 +17,7 @@ class UCameraShakeBase;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiHealthChangedSignature, float, NewHealth, float, MaxHealth);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGanapatiCharacterDiedSignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiDivineEnergyChangedSignature, float, NewEnergy, float, MaxEnergy);
 
 /**
  * AGanapatiPlayerCharacter
@@ -122,6 +123,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Feel")
 	void TriggerHitStop(float Duration);
 
+	/** Adds Divine Energy to the player pool, safely clamped to MaxDivineEnergy */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|DivineEnergy")
+	void AddDivineEnergy(float Amount);
+
+	/** Consumes Divine Energy from the player pool if sufficient. Returns true on success */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|DivineEnergy")
+	bool ConsumeDivineEnergy(float Amount);
+
+	/** Returns normalized Divine Energy percentage (0.0 to 1.0) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|DivineEnergy")
+	float GetDivineEnergyPercent() const;
+
+	/** Returns current Divine Energy level */
+	UFUNCTION(BlueprintPure, Category="Ganapati|DivineEnergy")
+	float GetCurrentDivineEnergy() const { return CurrentDivineEnergy; }
+
+	/** Returns maximum Divine Energy capacity */
+	UFUNCTION(BlueprintPure, Category="Ganapati|DivineEnergy")
+	float GetMaxDivineEnergy() const { return MaxDivineEnergy; }
+
+	/** Resets Divine Energy to zero */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|DivineEnergy")
+	void ResetDivineEnergy();
+
 public:
 	/** Returns current health amount */
 	UFUNCTION(BlueprintPure, Category="Ganapati|Health")
@@ -159,6 +184,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Health|Events")
 	FOnGanapatiCharacterDiedSignature OnCharacterDied;
 
+	/** Broadcast when Divine Energy changes */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|DivineEnergy|Events")
+	FOnGanapatiDivineEnergyChangedSignature OnDivineEnergyChanged;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void Landed(const FHitResult& Hit) override;
@@ -193,6 +222,10 @@ protected:
 	/** Blueprint implementable hook when camera side switches */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Camera")
 	void BP_OnCameraSideToggled(bool bIsRightSide);
+
+	/** Blueprint implementable hook when Divine Energy changes */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|DivineEnergy")
+	void BP_OnDivineEnergyChanged(float NewEnergy, float MaxEnergy);
 
 protected:
 	/** Camera boom positioning the camera behind the character */
@@ -302,6 +335,19 @@ protected:
 	/** Negative Z velocity threshold to trigger a hard landing */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Movement|Feel", meta=(ClampMax=0.0f, Units="cm/s"))
 	float HardLandingVelocityThreshold = -1000.0f;
+
+	// ── Phase 4B: Divine Energy Foundation ──
+	/** Maximum Divine Energy capacity */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy", meta=(ClampMin=1.0f))
+	float MaxDivineEnergy = 100.0f;
+
+	/** Current Divine Energy level */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|DivineEnergy")
+	float CurrentDivineEnergy = 0.0f;
+
+	/** Amount of Divine Energy gained per confirmed melee attack hit */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy", meta=(ClampMin=0.0f))
+	float DivineEnergyPerHit = 10.0f;
 
 private:
 	bool bIsDead = false;

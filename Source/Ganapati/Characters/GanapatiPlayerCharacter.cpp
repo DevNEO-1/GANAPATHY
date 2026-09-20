@@ -112,6 +112,7 @@ void AGanapatiPlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	ResetHealth();
+	ResetDivineEnergy();
 
 	if (FollowCamera)
 	{
@@ -201,6 +202,7 @@ void AGanapatiPlayerCharacter::HandleDamageDealt(float Damage, const FVector& Im
 {
 	PlayCameraShake(MeleeHitCameraShakeClass, MeleeHitShakeScale);
 	TriggerHitStop(HitStopDuration);
+	AddDivineEnergy(DivineEnergyPerHit);
 	BP_OnDealtDamage(Damage, ImpactPoint);
 }
 
@@ -344,6 +346,52 @@ void AGanapatiPlayerCharacter::ResetHealth()
 	}
 
 	OnHealthChanged.Broadcast(CurrentHP, MaxHP);
+}
+
+void AGanapatiPlayerCharacter::AddDivineEnergy(float Amount)
+{
+	if (Amount <= 0.0f || bIsDead)
+	{
+		return;
+	}
+
+	const float OldEnergy = CurrentDivineEnergy;
+	CurrentDivineEnergy = FMath::Clamp(CurrentDivineEnergy + Amount, 0.0f, MaxDivineEnergy);
+
+	if (!FMath::IsNearlyEqual(OldEnergy, CurrentDivineEnergy))
+	{
+		OnDivineEnergyChanged.Broadcast(CurrentDivineEnergy, MaxDivineEnergy);
+		BP_OnDivineEnergyChanged(CurrentDivineEnergy, MaxDivineEnergy);
+	}
+}
+
+bool AGanapatiPlayerCharacter::ConsumeDivineEnergy(float Amount)
+{
+	if (Amount <= 0.0f || CurrentDivineEnergy < Amount || bIsDead)
+	{
+		return false;
+	}
+
+	CurrentDivineEnergy = FMath::Clamp(CurrentDivineEnergy - Amount, 0.0f, MaxDivineEnergy);
+	OnDivineEnergyChanged.Broadcast(CurrentDivineEnergy, MaxDivineEnergy);
+	BP_OnDivineEnergyChanged(CurrentDivineEnergy, MaxDivineEnergy);
+	return true;
+}
+
+float AGanapatiPlayerCharacter::GetDivineEnergyPercent() const
+{
+	if (MaxDivineEnergy <= 0.0f)
+	{
+		return 0.0f;
+	}
+	return FMath::Clamp(CurrentDivineEnergy / MaxDivineEnergy, 0.0f, 1.0f);
+}
+
+void AGanapatiPlayerCharacter::ResetDivineEnergy()
+{
+	CurrentDivineEnergy = 0.0f;
+	OnDivineEnergyChanged.Broadcast(CurrentDivineEnergy, MaxDivineEnergy);
+	BP_OnDivineEnergyChanged(CurrentDivineEnergy, MaxDivineEnergy);
 }
 
 void AGanapatiPlayerCharacter::Landed(const FHitResult& Hit)
