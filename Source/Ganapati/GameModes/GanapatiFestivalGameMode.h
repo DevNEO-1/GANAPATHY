@@ -55,6 +55,23 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSacredDarshanStepAdvancedSignatu
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSacredDarshanCompletedSignature);
 
 /**
+ * Progression states for the overarching festival narrative (Phase 5D Subsystem 1).
+ */
+UENUM(BlueprintType)
+enum class EStoryProgressionState : uint8
+{
+	FestivalBeginning UMETA(DisplayName="Festival Beginning"),
+	SacredDarshan UMETA(DisplayName="Sacred Darshan"),
+	CourtyardAttack UMETA(DisplayName="Courtyard Attack"),
+	CaptainDefeated UMETA(DisplayName="Captain Defeated"),
+	CourtyardPurified UMETA(DisplayName="Courtyard Purified"),
+	SacredJourney UMETA(DisplayName="Sacred Journey")
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnStoryProgressionChangedSignature, EStoryProgressionState, PreviousState, EStoryProgressionState, NewState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSacredJourneyUnlockedSignature);
+
+/**
  * AGanapatiFestivalGameMode
  *
  * GameMode for the Ganesh Chaturthi festival street slice.
@@ -158,6 +175,26 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Combat|Encounter", meta=(DisplayName="On Courtyard Purified"))
 	void BP_OnCourtyardPurified();
 
+	/** Returns current overarching story progression state (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Story")
+	EStoryProgressionState GetStoryProgressionState() const { return CurrentStoryState; }
+
+	/** Returns true if Sacred Journey has begun and the Sacred Path is unlocked (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Story")
+	bool IsSacredJourneyUnlocked() const { return bSacredJourneyUnlocked; }
+
+	/** Unlocks or locks the Sacred Path gate via the cached street builder (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Story")
+	void SetSacredPathUnlocked(bool bUnlocked);
+
+	/** Blueprint implementable event fired when the story progression state changes (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Story", meta=(DisplayName="On Story Progression Changed"))
+	void BP_OnStoryProgressionChanged(EStoryProgressionState PreviousState, EStoryProgressionState NewState);
+
+	/** Blueprint implementable event fired when Sacred Journey unlocks (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Story", meta=(DisplayName="On Sacred Journey Unlocked"))
+	void BP_OnSacredJourneyUnlocked();
+
 public:
 	/** Broadcast when a quest step advances */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Quest|Events")
@@ -166,6 +203,14 @@ public:
 	/** Broadcast when the entire Sacred Darshan quest is completed */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Quest|Events")
 	FOnSacredDarshanCompletedSignature OnQuestCompleted;
+
+	/** Broadcast when overarching story progression advances (Phase 5D Subsystem 1) */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Story|Events")
+	FOnStoryProgressionChangedSignature OnStoryProgressionChanged;
+
+	/** Broadcast when Sacred Journey begins and Sacred Path is unlocked (Phase 5D Subsystem 1) */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Story|Events")
+	FOnSacredJourneyUnlockedSignature OnSacredJourneyUnlocked;
 
 protected:
 	virtual void BeginPlay() override;
@@ -235,6 +280,18 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Encounter")
 	TSubclassOf<UCameraShakeBase> EncounterStartCameraShakeClass;
 
+	/** Current overarching session story progression state (Phase 5D Subsystem 1) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Story")
+	EStoryProgressionState CurrentStoryState = EStoryProgressionState::FestivalBeginning;
+
+	/** Whether the Sacred Journey has begun and Sacred Path is unlocked (Phase 5D Subsystem 1) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Story")
+	bool bSacredJourneyUnlocked = false;
+
+	/** Event handler called after the 2.5-second divine story presentation completes (Phase 5D Subsystem 1) */
+	UFUNCTION()
+	void OnDivineStoryMomentCompleted();
+
 	/** Event handler when Asura Captain is defeated (Phase 5C Subsystem 3) */
 	UFUNCTION()
 	void HandleCaptainDied(AGanapatiAsuraMinion* Asura);
@@ -258,6 +315,7 @@ private:
 	FTimerHandle CourtyardAlertTimerHandle;
 	FTimerHandle CaptainProximityTimerHandle;
 	FTimerHandle CaptainIntroTimerHandle;
+	FTimerHandle DivineMomentTimerHandle;
 
 	int32 TotalAsurasSpawned = 0;
 	int32 DefeatedAsurasCount = 0;

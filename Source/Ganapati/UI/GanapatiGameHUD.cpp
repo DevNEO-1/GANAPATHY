@@ -52,6 +52,12 @@ void AGanapatiGameHUD::ShowQuestToast(const FText& InToastText, float InDuration
 	QuestToastRemainingTime = QuestToastDuration;
 }
 
+bool AGanapatiGameHUD::IsDisplayingSacredJourney() const
+{
+	AGanapatiFestivalGameMode* FestGM = Cast<AGanapatiFestivalGameMode>(GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr);
+	return FestGM && FestGM->IsSacredJourneyUnlocked();
+}
+
 void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 {
 	const float DeltaSeconds = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.016f;
@@ -91,7 +97,25 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 	// Dark semi-transparent background
 	DrawTintedBox(BannerX, BannerY, BannerW, BannerH, FLinearColor(0.02f, 0.02f, 0.04f, 0.78f));
 
-	if (FestGM && FestGM->IsQuestCompleted())
+	if (FestGM && FestGM->GetStoryProgressionState() == EStoryProgressionState::SacredJourney)
+	{
+		// Sacred Journey Objective Banner (Phase 5D Subsystem 1)
+		const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+		const float GoldPulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 3.5f));
+
+		// Golden border top and bottom
+		DrawTintedBox(BannerX, BannerY, BannerW, 3.0f, DivineFullColor * GoldPulse);
+		DrawTintedBox(BannerX, BannerY + BannerH - 2.0f, BannerW, 2.0f, PrimaryFestiveColor);
+
+		const FString JourneyHeader = TEXT("✦ THE SACRED JOURNEY — PILGRIMAGE OF THE ASCENT ✦");
+		const FString ObjTitle = FestGM->GetCurrentObjectiveTitle();
+		const FString ObjDesc = FestGM->GetCurrentObjectiveDescription();
+
+		DrawText(JourneyHeader, DivineFullColor * GoldPulse, BannerX + 165.0f, BannerY + 10.0f, nullptr, 1.15f);
+		DrawText(ObjTitle, FLinearColor(1.0f, 0.95f, 0.45f, 1.0f), BannerX + 35.0f, BannerY + 32.0f, nullptr, 1.05f);
+		DrawText(ObjDesc, FLinearColor(0.9f, 0.9f, 0.95f, 0.95f), BannerX + 35.0f, BannerY + 49.0f, nullptr, 0.82f);
+	}
+	else if (FestGM && FestGM->IsQuestCompleted())
 	{
 		// Celebratory Full Completion Banner
 		const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
@@ -141,7 +165,19 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 		// Dark background
 		DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, SkirmishH, FLinearColor(0.03f, 0.02f, 0.02f, 0.85f));
 
-		if (FestGM->IsCourtyardPurified())
+		if (FestGM->GetStoryProgressionState() == EStoryProgressionState::SacredJourney)
+		{
+			// Radiant divine gold Sacred Path unlocked card (Phase 5D Subsystem 1)
+			const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+			const float GoldPulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 3.5f));
+
+			DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, 2.5f, FLinearColor(1.0f, 0.85f, 0.25f, 0.95f) * GoldPulse);
+			DrawTintedBox(SkirmishX, SkirmishY + SkirmishH - 2.0f, SkirmishW, 2.0f, FLinearColor(1.0f, 0.65f, 0.15f, 0.85f));
+
+			const FString PathOpenText = TEXT("✦ SACRED PATH UNLOCKED — PROCEED BEYOND THE COURTYARD ✦");
+			DrawText(PathOpenText, FLinearColor(1.0f, 0.95f, 0.45f, 1.0f), SkirmishX + 42.0f, SkirmishY + 14.0f, nullptr, 1.05f);
+		}
+		else if (FestGM->IsCourtyardPurified())
 		{
 			// Luminous divine gold courtyard purified card (Phase 5C Subsystem 4)
 			const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;

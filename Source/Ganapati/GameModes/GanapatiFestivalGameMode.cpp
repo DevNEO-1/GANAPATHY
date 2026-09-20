@@ -218,10 +218,24 @@ void AGanapatiFestivalGameMode::TransitionToPlayerControl()
 
 	// Smoothly swoop from cinematic wide angle back into the third-person player camera
 	PC->SetViewTargetWithBlend(PlayerPawn, CinematicBlendDuration, VTBlend_EaseInOut, 2.0f);
+
+	// Advance initial story state to SacredDarshan when player control begins
+	if (CurrentStoryState == EStoryProgressionState::FestivalBeginning)
+	{
+		const EStoryProgressionState PrevState = CurrentStoryState;
+		CurrentStoryState = EStoryProgressionState::SacredDarshan;
+		OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
+		BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
+	}
 }
 
 FString AGanapatiFestivalGameMode::GetCurrentObjectiveTitle() const
 {
+	if (CurrentStoryState == EStoryProgressionState::SacredJourney)
+	{
+		return TEXT("OBJECTIVE: Follow the Sacred Path");
+	}
+
 	switch (CurrentQuestStep)
 	{
 	case ESacredDarshanStep::Step1_SpeakWithAnand:
@@ -241,6 +255,11 @@ FString AGanapatiFestivalGameMode::GetCurrentObjectiveTitle() const
 
 FString AGanapatiFestivalGameMode::GetCurrentObjectiveDescription() const
 {
+	if (CurrentStoryState == EStoryProgressionState::SacredJourney)
+	{
+		return TEXT("The courtyard is purified. Proceed through the eastern gate onto the sacred path.");
+	}
+
 	switch (CurrentQuestStep)
 	{
 	case ESacredDarshanStep::Step1_SpeakWithAnand:
@@ -562,6 +581,15 @@ void AGanapatiFestivalGameMode::StartCourtyardEncounter()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Courtyard Skirmish encounter started (Official Targets: %d)."), TotalAsurasSpawned);
+
+	// Advance story progression state to CourtyardAttack (Phase 5D Subsystem 1)
+	if (CurrentStoryState < EStoryProgressionState::CourtyardAttack)
+	{
+		const EStoryProgressionState PrevState = CurrentStoryState;
+		CurrentStoryState = EStoryProgressionState::CourtyardAttack;
+		OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
+		BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
+	}
 }
 
 void AGanapatiFestivalGameMode::CheckCourtyardProximity()
@@ -718,12 +746,45 @@ void AGanapatiFestivalGameMode::HandleCaptainDied(AGanapatiAsuraMinion* Asura)
 
 	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Asura Captain mini-boss defeated and banished!"));
 
+	// Advance story progression state to CaptainDefeated if not yet purified (Phase 5D Subsystem 1)
+	if (!bCourtyardPurified && CurrentStoryState < EStoryProgressionState::CaptainDefeated)
+	{
+		const EStoryProgressionState PrevState = CurrentStoryState;
+		CurrentStoryState = EStoryProgressionState::CaptainDefeated;
+		OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
+		BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
+	}
+
 	// Check if full courtyard purification conditions are met (Phase 5C Subsystem 4)
 	CheckCourtyardPurification();
 }
 
 void AGanapatiFestivalGameMode::HandlePlayerDied()
 {
+	// If player dies before SacredJourney begins, reset pre-purification story state and keep gate locked
+	if (!bSacredJourneyUnlocked)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(DivineMomentTimerHandle);
+		}
+
+		if (bCourtyardPurified)
+		{
+			bCourtyardPurified = false;
+		}
+
+		if (CurrentStoryState == EStoryProgressionState::CaptainDefeated || CurrentStoryState == EStoryProgressionState::CourtyardPurified)
+		{
+			const EStoryProgressionState PrevState = CurrentStoryState;
+			CurrentStoryState = EStoryProgressionState::CourtyardAttack;
+			OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
+			BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
+		}
+
+		SetSacredPathUnlocked(false);
+	}
+
 	if (CaptainEncounterState == ECaptainEncounterState::Active || CaptainEncounterState == ECaptainEncounterState::Intro)
 	{
 		CaptainEncounterState = ECaptainEncounterState::Dormant;
@@ -779,19 +840,76 @@ void AGanapatiFestivalGameMode::TriggerCourtyardPurification()
 		}
 	}
 
-	// 2. Display approved purification toast
+	// 2. Display approved purification toast and non-intrusive camera pulse
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
 		{
 			HUD->ShowQuestToast(FText::FromString(TEXT("✦ INNER COURTYARD PURIFIED: THE DIVINE SANCTUARY RESTORED! ✦")), 5.0f);
 		}
+
+		// Non-intrusive camera feedback: player movement and camera look remain 100% active
+		if (EncounterStartCameraShakeClass)
+		{
+			PC->ClientStartCameraShake(EncounterStartCameraShakeClass, 0.75f);
+		}
 	}
 
 	// 3. Fire Blueprint implementable hook
 	BP_OnCourtyardPurified();
 
+	// 4. Advance overarching story progression state to CourtyardPurified (Phase 5D Subsystem 1)
+	const EStoryProgressionState PrevState = CurrentStoryState;
+	CurrentStoryState = EStoryProgressionState::CourtyardPurified;
+	OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
+	BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
+
 	UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ COURTYARD PURIFIED! 2/2 Minions and Asura Captain banished! Player health restored. ✦"));
+
+	// 5. One-time 2.5-second non-intrusive divine presentation before transitioning to SacredJourney
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DivineMomentTimerHandle);
+		World->GetTimerManager().SetTimer(
+			DivineMomentTimerHandle,
+			this,
+			&AGanapatiFestivalGameMode::OnDivineStoryMomentCompleted,
+			2.5f,
+			false
+		);
+	}
+}
+
+void AGanapatiFestivalGameMode::OnDivineStoryMomentCompleted()
+{
+	if (bSacredJourneyUnlocked)
+	{
+		return;
+	}
+
+	bSacredJourneyUnlocked = true;
+	const EStoryProgressionState PrevState = CurrentStoryState;
+	CurrentStoryState = EStoryProgressionState::SacredJourney;
+
+	// Unlock physical Sacred Path gate in world
+	SetSacredPathUnlocked(true);
+
+	// Display story progression message on HUD
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+		{
+			HUD->ShowQuestToast(FText::FromString(TEXT("✦ THE SACRED PATH HAS OPENED — FOLLOW THE SACRED PATH! ✦")), 5.0f);
+		}
+	}
+
+	// Dispatch delegates and blueprint hooks
+	OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
+	BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
+	OnSacredJourneyUnlocked.Broadcast();
+	BP_OnSacredJourneyUnlocked();
+
+	UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ SACRED JOURNEY UNLOCKED! Eastern courtyard gate is passable. OBJECTIVE: Follow the Sacred Path ✦"));
 }
 
 void AGanapatiFestivalGameMode::SetBossBarrierActive(bool bActive)
@@ -799,6 +917,14 @@ void AGanapatiFestivalGameMode::SetBossBarrierActive(bool bActive)
 	if (CachedStreetBuilder.IsValid())
 	{
 		CachedStreetBuilder->SetBossBarrierActive(bActive);
+	}
+}
+
+void AGanapatiFestivalGameMode::SetSacredPathUnlocked(bool bUnlocked)
+{
+	if (CachedStreetBuilder.IsValid())
+	{
+		CachedStreetBuilder->SetSacredPathUnlocked(bUnlocked);
 	}
 }
 

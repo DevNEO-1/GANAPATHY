@@ -36,6 +36,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|HUD")
 	void ShowQuestToast(const FText& InToastText, float InDuration = 3.5f);
 
+	/** Returns true if HUD is currently displaying Sacred Journey objective (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|HUD")
+	bool IsDisplayingSacredJourney() const;
+
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 

@@ -37,6 +37,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat")
 	void SetBossBarrierActive(bool bActive);
 
+	/** Toggles the eastern courtyard Sacred Path progression gate (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Story")
+	void SetSacredPathUnlocked(bool bUnlocked);
+
+	/** Returns true if Sacred Path gate has been unlocked (Phase 5D Subsystem 1) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Story")
+	bool IsSacredPathUnlocked() const { return bSacredPathUnlocked; }
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -90,6 +98,9 @@ protected:
 
 	/** Builds the parkour and combat training courtyard */
 	void BuildCombatAndParkourCourtyard();
+
+	/** Builds the eastern Sacred Path extending beyond the courtyard (Phase 5D Subsystem 1) */
+	void BuildSacredPath(const FVector& CourtCenter);
 
 	/** Spawns festival NPCs, shrine interactable, and training dummies */
 	void PopulateWorldActors();
@@ -177,10 +188,19 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> BossBarrierComp;
 
+	/** Eastern courtyard Sacred Path progression gate barrier component (Phase 5D Subsystem 1) */
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> SacredPathBarrierComp;
+
+	/** Ceremonial lanterns along the Sacred Path (Phase 5D Subsystem 1) */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UPointLightComponent>> SacredPathLights;
+
 	/** Number of wandering NPCs to spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Spawning", meta=(ClampMin=1, ClampMax=20))
 	int32 NPCSpawnCount = 5;
 
 private:
 	bool bHasConstructed = false;
+	bool bSacredPathUnlocked = false;
 };

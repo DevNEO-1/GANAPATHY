@@ -1659,7 +1659,35 @@ void AFestivalStreetBuilder::BuildCombatAndParkourCourtyard()
 	// Surrounding Walls (great for Wall Jump tests)
 	CreateMeshPiece(TEXT("Court_Wall_N"), CubeMesh, CourtCenter + FVector(900.0f, 0.0f, 250.0f), FRotator::ZeroRotator, FVector(0.6f, 18.0f, 5.0f));
 	CreateMeshPiece(TEXT("Court_Wall_S"), CubeMesh, CourtCenter + FVector(-900.0f, 0.0f, 250.0f), FRotator::ZeroRotator, FVector(0.6f, 18.0f, 5.0f));
-	CreateMeshPiece(TEXT("Court_Wall_E"), CubeMesh, CourtCenter + FVector(0.0f, 900.0f, 250.0f), FRotator::ZeroRotator, FVector(18.0f, 0.6f, 5.0f));
+
+	// Eastern Courtyard Boundary & Sacred Path Gateway (Phase 5D Subsystem 1)
+	// Left/Right wall wings leaving a 600cm wide central portal at CourtCenter (X=800, Y=2900)
+	CreateMeshPiece(TEXT("Court_Wall_E_North"), CubeMesh, CourtCenter + FVector(600.0f, 900.0f, 250.0f), FRotator::ZeroRotator, FVector(6.0f, 0.6f, 5.0f));
+	CreateMeshPiece(TEXT("Court_Wall_E_South"), CubeMesh, CourtCenter + FVector(-600.0f, 900.0f, 250.0f), FRotator::ZeroRotator, FVector(6.0f, 0.6f, 5.0f));
+	CreateMeshPiece(TEXT("Court_Wall_E_Lintel"), CubeMesh, CourtCenter + FVector(0.0f, 900.0f, 425.0f), FRotator::ZeroRotator, FVector(6.0f, 0.8f, 1.5f));
+	CreateMeshPiece(TEXT("Court_Gate_Pillar_L"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, CourtCenter + FVector(-300.0f, 900.0f, 180.0f), FRotator::ZeroRotator, FVector(1.0f, 1.0f, 3.6f), true, SindoorMat);
+	CreateMeshPiece(TEXT("Court_Gate_Pillar_R"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, CourtCenter + FVector(300.0f, 900.0f, 180.0f), FRotator::ZeroRotator, FVector(1.0f, 1.0f, 3.6f), true, SindoorMat);
+
+	// Sacred Path Gate Barrier Component (Phase 5D Subsystem 1)
+	// Centered at X=800, Y=2900. Starts visible and with BlockAll collision until courtyard is purified.
+	SacredPathBarrierComp = CreateMeshPiece(
+		TEXT("Court_SacredPathBarrier"),
+		CubeMesh,
+		CourtCenter + FVector(0.0f, 900.0f, 160.0f),
+		FRotator::ZeroRotator,
+		FVector(6.0f, 0.5f, 3.2f),
+		true,
+		GlowMaterial
+	);
+	if (SacredPathBarrierComp)
+	{
+		SacredPathBarrierComp->SetVisibility(true);
+		SacredPathBarrierComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		SacredPathBarrierComp->SetCollisionProfileName(TEXT("BlockAll"));
+	}
+
+	// Build the physical Sacred Path leading beyond the courtyard
+	BuildSacredPath(CourtCenter);
 
 	// Stepped Parkour Platforms for Double-Jump & Anti-Gravity tests
 	CreateMeshPiece(TEXT("Parkour_Plat_1"), CubeMesh, CourtCenter + FVector(400.0f, -400.0f, 80.0f), FRotator::ZeroRotator, FVector(3.0f, 3.0f, 1.6f));
@@ -1689,6 +1717,42 @@ void AFestivalStreetBuilder::BuildCombatAndParkourCourtyard()
 	}
 }
 
+void AFestivalStreetBuilder::BuildSacredPath(const FVector& CourtCenter)
+{
+	SacredPathLights.Empty();
+
+	// Paved stone pilgrimage path extending beyond courtyard (from Y = 2900 to Y = 4200)
+	CreateMeshPiece(
+		TEXT("SacredPath_Floor"),
+		CubeMesh,
+		CourtCenter + FVector(0.0f, 1550.0f, -15.0f),
+		FRotator::ZeroRotator,
+		FVector(6.0f, 13.0f, 0.3f)
+	);
+
+	// Left and Right Toran Pillars along the Sacred Path
+	CreateMeshPiece(TEXT("SacredPath_Pillar_L1"), CubeMesh, CourtCenter + FVector(-280.0f, 1300.0f, 120.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
+	CreateMeshPiece(TEXT("SacredPath_Pillar_R1"), CubeMesh, CourtCenter + FVector(280.0f, 1300.0f, 120.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
+	CreateMeshPiece(TEXT("SacredPath_Pillar_L2"), CubeMesh, CourtCenter + FVector(-280.0f, 1800.0f, 120.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
+	CreateMeshPiece(TEXT("SacredPath_Pillar_R2"), CubeMesh, CourtCenter + FVector(280.0f, 1800.0f, 120.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
+
+	// Sacred Mountain Threshold Dais at path terminus
+	CreateMeshPiece(TEXT("SacredPath_Dais"), CubeMesh, CourtCenter + FVector(0.0f, 2150.0f, 15.0f), FRotator::ZeroRotator, FVector(8.0f, 3.0f, 0.3f), true, GoldMat);
+
+	// Ceremonial lanterns along Sacred Path
+	UPointLightComponent* L1 = CreateFestivalLight(TEXT("SacredPath_Light_L1"), CourtCenter + FVector(-260.0f, 1300.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
+	UPointLightComponent* L2 = CreateFestivalLight(TEXT("SacredPath_Light_R1"), CourtCenter + FVector(260.0f, 1300.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
+	UPointLightComponent* L3 = CreateFestivalLight(TEXT("SacredPath_Light_L2"), CourtCenter + FVector(-260.0f, 1800.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
+	UPointLightComponent* L4 = CreateFestivalLight(TEXT("SacredPath_Light_R2"), CourtCenter + FVector(260.0f, 1800.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
+	UPointLightComponent* L5 = CreateFestivalLight(TEXT("SacredPath_Light_Dais"), CourtCenter + FVector(0.0f, 2150.0f, 280.0f), FLinearColor(1.0f, 0.85f, 0.35f), 6000.0f, 1400.0f);
+
+	if (L1) SacredPathLights.Add(L1);
+	if (L2) SacredPathLights.Add(L2);
+	if (L3) SacredPathLights.Add(L3);
+	if (L4) SacredPathLights.Add(L4);
+	if (L5) SacredPathLights.Add(L5);
+}
+
 void AFestivalStreetBuilder::SetBossBarrierActive(bool bActive)
 {
 	if (BossBarrierComp)
@@ -1700,6 +1764,30 @@ void AFestivalStreetBuilder::SetBossBarrierActive(bool bActive)
 			BossBarrierComp->SetCollisionProfileName(TEXT("BlockAll"));
 		}
 	}
+}
+
+void AFestivalStreetBuilder::SetSacredPathUnlocked(bool bUnlocked)
+{
+	bSacredPathUnlocked = bUnlocked;
+	if (SacredPathBarrierComp)
+	{
+		SacredPathBarrierComp->SetVisibility(!bUnlocked);
+		SacredPathBarrierComp->SetCollisionEnabled(bUnlocked ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryAndPhysics);
+		if (!bUnlocked)
+		{
+			SacredPathBarrierComp->SetCollisionProfileName(TEXT("BlockAll"));
+		}
+	}
+
+	for (UPointLightComponent* Light : SacredPathLights)
+	{
+		if (Light)
+		{
+			Light->SetIntensity(bUnlocked ? 6500.0f : 2500.0f);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("AFestivalStreetBuilder: Sacred Path gate unlocked state set to %s"), bUnlocked ? TEXT("TRUE (PASSABLE)") : TEXT("FALSE (SEALED)"));
 }
 
 void AFestivalStreetBuilder::PopulateWorldActors()
