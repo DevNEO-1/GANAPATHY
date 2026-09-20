@@ -365,6 +365,16 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 		}
 	}
 
+	// 6. Bind to Player Character death event for boss fight reset (Phase 5C Subsystem 4)
+	if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(World, 0))
+	{
+		if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
+		{
+			PlayerChar->OnCharacterDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandlePlayerDied);
+			PlayerChar->OnCharacterDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandlePlayerDied);
+		}
+	}
+
 	// Start Captain proximity monitoring timer
 	World->GetTimerManager().SetTimer(
 		CaptainProximityTimerHandle,
@@ -512,6 +522,7 @@ void AGanapatiFestivalGameMode::HandleAsuraDied(AGanapatiAsuraMinion* Asura)
 	{
 		EncounterState = ECourtyardEncounterState::Completed;
 		HUD->ShowQuestToast(FText::FromString(TEXT("⚔ Victory! Courtyard Cleared: All 2 Asura Minions Banished! ⚔")), 5.0f);
+		CheckCourtyardPurification();
 	}
 	else
 	{
@@ -706,6 +717,81 @@ void AGanapatiFestivalGameMode::HandleCaptainDied(AGanapatiAsuraMinion* Asura)
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Asura Captain mini-boss defeated and banished!"));
+
+	// Check if full courtyard purification conditions are met (Phase 5C Subsystem 4)
+	CheckCourtyardPurification();
+}
+
+void AGanapatiFestivalGameMode::HandlePlayerDied()
+{
+	if (CaptainEncounterState == ECaptainEncounterState::Active || CaptainEncounterState == ECaptainEncounterState::Intro)
+	{
+		CaptainEncounterState = ECaptainEncounterState::Dormant;
+		SetBossBarrierActive(false);
+
+		if (CachedCaptain.IsValid())
+		{
+			CachedCaptain->ResetBossState();
+		}
+
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(CaptainProximityTimerHandle);
+			World->GetTimerManager().ClearTimer(CaptainIntroTimerHandle);
+			World->GetTimerManager().SetTimer(
+				CaptainProximityTimerHandle,
+				this,
+				&AGanapatiFestivalGameMode::CheckCaptainProximity,
+				0.25f,
+				true
+			);
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Player died during boss fight. Captain reset to pristine spawn state, barrier dissolved."));
+	}
+}
+
+void AGanapatiFestivalGameMode::CheckCourtyardPurification()
+{
+	if (bCourtyardPurified)
+	{
+		return;
+	}
+
+	// Purification occurs ONLY when:
+	// - 2/2 basic Minions defeated (IsEncounterCompleted)
+	// - Captain defeated (CaptainEncounterState == ECaptainEncounterState::Defeated)
+	if (IsEncounterCompleted() && CaptainEncounterState == ECaptainEncounterState::Defeated)
+	{
+		bCourtyardPurified = true;
+		TriggerCourtyardPurification();
+	}
+}
+
+void AGanapatiFestivalGameMode::TriggerCourtyardPurification()
+{
+	// 1. Restore player health to maximum
+	if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
+	{
+		if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
+		{
+			PlayerChar->ResetHealth();
+		}
+	}
+
+	// 2. Display approved purification toast
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+		{
+			HUD->ShowQuestToast(FText::FromString(TEXT("✦ INNER COURTYARD PURIFIED: THE DIVINE SANCTUARY RESTORED! ✦")), 5.0f);
+		}
+	}
+
+	// 3. Fire Blueprint implementable hook
+	BP_OnCourtyardPurified();
+
+	UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ COURTYARD PURIFIED! 2/2 Minions and Asura Captain banished! Player health restored. ✦"));
 }
 
 void AGanapatiFestivalGameMode::SetBossBarrierActive(bool bActive)

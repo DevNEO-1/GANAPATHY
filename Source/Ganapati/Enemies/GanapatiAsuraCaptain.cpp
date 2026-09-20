@@ -64,6 +64,12 @@ AGanapatiAsuraCaptain::AGanapatiAsuraCaptain()
 	Tags.Add(FName(TEXT("Captain")));
 }
 
+void AGanapatiAsuraCaptain::BeginPlay()
+{
+	Super::BeginPlay();
+	InitialSpawnTransform = GetActorTransform();
+}
+
 void AGanapatiAsuraCaptain::UpdateAI(float DeltaTime)
 {
 	// If currently paused in post-attack vulnerability window, maintain halt
@@ -125,19 +131,23 @@ void AGanapatiAsuraCaptain::ApplyAttackPatternSettings()
 	switch (CurrentAttackPattern)
 	{
 	case ECaptainAttackPattern::HeavyCleave:
-		// Pattern 1: Heavy Cleave (1.0s telegraph, 40 damage, 220 reach / 90 radius)
-		AttackWindupTime = 1.0f;
+		// Pattern 1: Heavy Cleave (1.0s normal, 0.82s enraged; 40 damage, 220 reach / 90 radius)
+		AttackWindupTime = bIsEnraged ? 0.82f : 1.0f;
+		AttackCooldown = bIsEnraged ? 2.8f : 3.5f;
 		AttackDamage = 40.0f;
 		AttackReach = 220.0f;
 		AttackRadius = 90.0f;
+		MeleeStopDistance = 190.0f;
 		break;
 
 	case ECaptainAttackPattern::OverheadSmash:
-		// Pattern 2: Overhead Smash (1.3s telegraph, 50 damage, 250 reach / 110 radius)
-		AttackWindupTime = 1.3f;
+		// Pattern 2: Overhead Smash (1.3s normal, 1.05s enraged; 50 damage, 250 reach / 110 radius)
+		AttackWindupTime = bIsEnraged ? 1.05f : 1.3f;
+		AttackCooldown = bIsEnraged ? 2.8f : 3.5f;
 		AttackDamage = 50.0f;
 		AttackReach = 250.0f;
 		AttackRadius = 110.0f;
+		MeleeStopDistance = 210.0f;
 		break;
 	}
 }
@@ -172,10 +182,10 @@ void AGanapatiAsuraCaptain::DoAttackTrace(FName DamageSourceBone)
 		QueryParams
 	);
 
+	TSet<AActor*> DamagedActors;
+
 	if (bHit)
 	{
-		TSet<AActor*> DamagedActors;
-
 		for (const FHitResult& Hit : HitResults)
 		{
 			AActor* HitActor = Hit.GetActor();
@@ -214,6 +224,49 @@ void AGanapatiAsuraCaptain::DoAttackTrace(FName DamageSourceBone)
 						*GetName(), AttackDamage,
 						(CurrentAttackPattern == ECaptainAttackPattern::HeavyCleave ? TEXT("HeavyCleave") : TEXT("OverheadSmash")),
 						*HitActor->GetName());
+				}
+			}
+		}
+	}
+
+	// ── Enraged Overhead Smash: 220cm Ground Shockwave (Phase 5C Subsystem 4) ──
+	if (bIsEnraged && CurrentAttackPattern == ECaptainAttackPattern::OverheadSmash)
+	{
+		const FVector ShockwaveCenter = GetActorLocation() + (GetActorForwardVector() * 140.0f);
+		TArray<FHitResult> ShockwaveHits;
+		FCollisionShape ShockwaveSphere = FCollisionShape::MakeSphere(220.0f);
+
+		const bool bShockHit = World->SweepMultiByObjectType(
+			ShockwaveHits,
+			ShockwaveCenter,
+			ShockwaveCenter + FVector(0.0f, 0.0f, 10.0f),
+			FQuat::Identity,
+			ObjectQueryParams,
+			ShockwaveSphere,
+			QueryParams
+		);
+
+		if (bShockHit)
+		{
+			for (const FHitResult& SwHit : ShockwaveHits)
+			{
+				AActor* SwActor = SwHit.GetActor();
+				if (!SwActor || SwActor == this || DamagedActors.Contains(SwActor))
+				{
+					continue;
+				}
+				DamagedActors.Add(SwActor);
+
+				if (SwActor->ActorHasTag(FName(TEXT("Player"))) || Cast<AGanapatiPlayerCharacter>(SwActor))
+				{
+					if (ICombatDamageable* Damageable = Cast<ICombatDamageable>(SwActor))
+					{
+						const FVector UpwardImpulse = (FVector::UpVector * 280.0f) + (GetActorForwardVector() * 200.0f);
+						Damageable->ApplyDamage(20.0f, this, SwHit.ImpactPoint, UpwardImpulse);
+
+						UE_LOG(LogTemp, Warning, TEXT("AGanapatiAsuraCaptain [%s]: Enraged Ground Shockwave hit %s for 20 damage!"),
+							*GetName(), *SwActor->GetName());
+					}
 				}
 			}
 		}
@@ -305,6 +358,12 @@ void AGanapatiAsuraCaptain::ApplyDamage(float Damage, AActor* DamageCauser, cons
 		return;
 	}
 
+	// ── Phase 2: Enrage Transition at <= 50% HP (<= 125 HP) ──
+	if (!bIsEnraged && CurrentHP <= (MaxHP * 0.5f) && CurrentHP > 0.0f)
+	{
+		TriggerEnrage();
+	}
+
 	// ── Hyper-Armor during Attack Windup ──
 	// If the Captain is actively executing an attack, light hits must NOT cancel the attack!
 	if (CurrentState == EAsuraAIState::Attacking)
@@ -354,6 +413,79 @@ void AGanapatiAsuraCaptain::ApplyDamage(float Damage, AActor* DamageCauser, cons
 		// Stagger on cooldown: update health display without dropping current action
 		UpdateHealthText();
 	}
+}
+
+void AGanapatiAsuraCaptain::TriggerEnrage()
+{
+	if (bIsEnraged || CurrentState == EAsuraAIState::Dead)
+	{
+		return;
+	}
+
+	bIsEnraged = true;
+
+	// Enraged movement speed 225 cm/s
+	ChaseSpeed = 225.0f;
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->MaxWalkSpeed = ChaseSpeed;
+	}
+
+	// Update attack pattern timings for enrage (Cleave 0.82s, Smash 1.05s, Cooldown 2.8s)
+	ApplyAttackPatternSettings();
+
+	// Broadcast Blueprint implementable hook
+	BP_OnCaptainEnraged();
+
+	UpdateHealthText();
+
+	UE_LOG(LogTemp, Warning, TEXT("AGanapatiAsuraCaptain [%s]: ENRAGED! Speed: %.0f, attack windups tightened (Cleave 0.82s, Smash 1.05s)."), *GetName(), ChaseSpeed);
+}
+
+void AGanapatiAsuraCaptain::ResetBossState()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(CaptainRecoveryTimerHandle);
+		World->GetTimerManager().ClearTimer(AttackWindupTimerHandle);
+		World->GetTimerManager().ClearTimer(AttackRecoveryTimerHandle);
+		World->GetTimerManager().ClearTimer(StaggerTimerHandle);
+		World->GetTimerManager().ClearTimer(HitStopTimerHandle);
+	}
+
+	bIsRecovering = false;
+	bIsEnraged = false;
+	CurrentHP = MaxHP; // 250 HP
+	CurrentState = EAsuraAIState::Idle;
+	ChaseSpeed = 190.0f;
+
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->SetMovementMode(MOVE_Walking);
+		MoveComp->MaxWalkSpeed = ChaseSpeed;
+		MoveComp->StopMovementImmediately();
+	}
+
+	// Restore spawn transform
+	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::ResetPhysics);
+
+	// Ensure capsule collision is active
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
+
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetSimulatePhysics(false);
+		MeshComp->SetCollisionProfileName(TEXT("CharacterMesh"));
+		MeshComp->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		MeshComp->SetRelativeLocation(FVector(0.0f, 0.0f, -145.0f));
+		MeshComp->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	}
+
+	ApplyAttackPatternSettings();
+	UpdateHealthText();
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiAsuraCaptain [%s]: Reset to pristine spawn state (250 HP, Dormant)."), *GetName());
 }
 
 void AGanapatiAsuraCaptain::HandleDeath()
@@ -460,6 +592,15 @@ void AGanapatiAsuraCaptain::UpdateHealthText()
 		StateColor = FColor(210, 60, 60);
 	}
 
+	if (bIsEnraged && CurrentState != EAsuraAIState::Dead)
+	{
+		StateStr = FString::Printf(TEXT("[ENRAGED] %s"), *StateStr);
+		if (CurrentState != EAsuraAIState::Attacking)
+		{
+			StateColor = FColor(255, 60, 20); // Intense fiery orange-red
+		}
+	}
+
 	// 16-segment ASCII health gauge bar [================]
 	const float HealthFrac = FMath::Clamp(MaxHP > 0.0f ? CurrentHP / MaxHP : 0.0f, 0.0f, 1.0f);
 	const int32 TotalBars = 16;
@@ -476,10 +617,11 @@ void AGanapatiAsuraCaptain::UpdateHealthText()
 	}
 
 	const float HealthPct = HealthFrac * 100.0f;
+	const FString DisplayTitle = bIsEnraged ? TEXT("★ ASURA CAPTAIN (ENRAGED) ★") : FString::Printf(TEXT("★ %s ★"), *EnemyDisplayName);
 
 	FloatingHealthText->SetText(FText::FromString(
-		FString::Printf(TEXT("★ %s ★\n[%s] %.0f/%.0f HP (%.0f%%)\n%s"),
-			*EnemyDisplayName, *BarStr, CurrentHP, MaxHP, HealthPct, *StateStr)
+		FString::Printf(TEXT("%s\n[%s] %.0f/%.0f HP (%.0f%%)\n%s"),
+			*DisplayTitle, *BarStr, CurrentHP, MaxHP, HealthPct, *StateStr)
 	));
 
 	FloatingHealthText->SetTextRenderColor(StateColor);

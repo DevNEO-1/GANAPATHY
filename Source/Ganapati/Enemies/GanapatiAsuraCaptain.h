@@ -57,10 +57,22 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Combat")
 	bool IsInRecovery() const { return bIsRecovering; }
 
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat")
+	bool IsEnraged() const { return bIsEnraged; }
+
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat")
 	void SelectAttackForDistance();
 
+	/** Resets Captain to pristine spawn state after player defeat */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat")
+	void ResetBossState();
+
+	/** Blueprint implementable event fired when Captain enrages at <= 50% HP */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Combat", meta=(DisplayName="On Captain Enraged"))
+	void BP_OnCaptainEnraged();
+
 protected:
+	virtual void BeginPlay() override;
 	virtual void UpdateAI(float DeltaTime) override;
 	virtual void StartAttack() override;
 	virtual void FinishAttack() override;
@@ -68,6 +80,7 @@ protected:
 
 	void ApplyAttackPatternSettings();
 	void CompleteRecovery();
+	void TriggerEnrage();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Combat")
@@ -76,6 +89,10 @@ protected:
 	/** Whether the Captain is currently pausing in post-attack recovery vulnerability */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Combat|Feel")
 	bool bIsRecovering = false;
+
+	/** Whether the Captain has entered Phase 2 enrage (at <= 50% HP) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Combat")
+	bool bIsEnraged = false;
 
 	/** Duration of post-attack vulnerability opening window */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Feel", meta=(ClampMin=0.1f, Units="s"))
@@ -88,4 +105,7 @@ protected:
 	float LastStaggerTime = -10.0f;
 
 	FTimerHandle CaptainRecoveryTimerHandle;
+
+	/** Cached initial spawn transform for clean reset */
+	FTransform InitialSpawnTransform;
 };

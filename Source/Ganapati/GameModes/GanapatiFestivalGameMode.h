@@ -126,6 +126,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Encounter")
 	void StartCourtyardEncounter();
 
+	/** Returns true if courtyard has been fully purified (minions cleared + Captain defeated) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Encounter")
+	bool IsCourtyardPurified() const { return bCourtyardPurified; }
+
 	/** Returns current state of the Asura Captain mini-boss encounter (Phase 5C Subsystem 3) */
 	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Boss")
 	ECaptainEncounterState GetCaptainEncounterState() const { return CaptainEncounterState; }
@@ -149,6 +153,10 @@ public:
 	/** Activates or deactivates the temporary boss ward barrier */
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Boss")
 	void SetBossBarrierActive(bool bActive);
+
+	/** Blueprint implementable event fired when the courtyard is fully purified (Phase 5C Subsystem 4) */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Combat|Encounter", meta=(DisplayName="On Courtyard Purified"))
+	void BP_OnCourtyardPurified();
 
 public:
 	/** Broadcast when a quest step advances */
@@ -231,6 +239,10 @@ protected:
 	UFUNCTION()
 	void HandleCaptainDied(AGanapatiAsuraMinion* Asura);
 
+	/** Event handler when player character dies (resets active boss fight) */
+	UFUNCTION()
+	void HandlePlayerDied();
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<ACameraActor> CinematicCamera;
@@ -250,6 +262,7 @@ private:
 	int32 TotalAsurasSpawned = 0;
 	int32 DefeatedAsurasCount = 0;
 	bool bCourtyardAlertTriggered = false;
+	bool bCourtyardPurified = false;
 
 	/** Checks if player has entered the courtyard and triggers skirmish alert toast */
 	void CheckCourtyardProximity();
@@ -262,4 +275,10 @@ private:
 
 	/** Transitions Captain encounter from Intro to Active */
 	void TransitionCaptainToActive();
+
+	/** Evaluates whether courtyard purification criteria are met (Phase 5C Subsystem 4) */
+	void CheckCourtyardPurification();
+
+	/** Executes the grand courtyard purification celebration and player blessing */
+	void TriggerCourtyardPurification();
 };

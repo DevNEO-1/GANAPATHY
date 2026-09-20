@@ -141,7 +141,19 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 		// Dark background
 		DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, SkirmishH, FLinearColor(0.03f, 0.02f, 0.02f, 0.85f));
 
-		if (bCompleted)
+		if (FestGM->IsCourtyardPurified())
+		{
+			// Luminous divine gold courtyard purified card (Phase 5C Subsystem 4)
+			const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+			const float GoldPulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 3.5f));
+
+			DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, 2.5f, FLinearColor(1.0f, 0.85f, 0.25f, 0.95f) * GoldPulse);
+			DrawTintedBox(SkirmishX, SkirmishY + SkirmishH - 2.0f, SkirmishW, 2.0f, FLinearColor(1.0f, 0.65f, 0.15f, 0.85f));
+
+			const FString PurifiedText = TEXT("✦ COURTYARD PURIFIED — THE DIVINE SANCTUARY RESTORED ✦");
+			DrawText(PurifiedText, FLinearColor(1.0f, 0.92f, 0.45f, 1.0f), SkirmishX + 48.0f, SkirmishY + 14.0f, nullptr, 1.05f);
+		}
+		else if (bCompleted)
 		{
 			// Emerald victory border
 			DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, 2.0f, FLinearColor(0.2f, 0.9f, 0.35f, 0.95f));
@@ -406,9 +418,18 @@ void AGanapatiGameHUD::DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapat
 	DrawTintedBox(BarX - 10.0f, BarY, BarW + 20.0f, 2.5f, FLinearColor(1.0f, 0.75f, 0.2f, 0.95f * BossBarFadeAlpha));
 	DrawTintedBox(BarX - 10.0f, BarY + CardH - 2.0f, BarW + 20.0f, 2.0f, FLinearColor(1.0f, 0.6f, 0.15f, 0.80f * BossBarFadeAlpha));
 
+	const bool bIsDefeated = (EncounterState == ECaptainEncounterState::Defeated);
+
 	// 3. Header title
-	const FString BossTitle = TEXT("★ ASURA CAPTAIN — CORRUPTED COMMANDER ★");
-	DrawText(BossTitle, FLinearColor(1.0f, 0.88f, 0.4f, BossBarFadeAlpha), BarX + 115.0f, BarY + 6.0f, nullptr, 1.05f);
+	const bool bIsEnraged = (Captain && Captain->IsEnraged() && !bIsDefeated);
+	const FString BossTitle = bIsEnraged
+		? TEXT("★ ASURA CAPTAIN — CORRUPTED COMMANDER (ENRAGED) ★")
+		: TEXT("★ ASURA CAPTAIN — CORRUPTED COMMANDER ★");
+	const float TitleX = bIsEnraged ? (BarX + 70.0f) : (BarX + 115.0f);
+	const FLinearColor TitleColor = bIsEnraged
+		? FLinearColor(1.0f, 0.55f, 0.15f, BossBarFadeAlpha)
+		: FLinearColor(1.0f, 0.88f, 0.4f, BossBarFadeAlpha);
+	DrawText(BossTitle, TitleColor, TitleX, BarY + 6.0f, nullptr, 1.05f);
 
 	// 4. Health Bar Slot & Fill
 	const float SlotY = BarY + 26.0f;
@@ -417,7 +438,6 @@ void AGanapatiGameHUD::DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapat
 	// Dark slot frame
 	DrawTintedBox(BarX, SlotY, BarW, SlotH, FLinearColor(0.08f, 0.03f, 0.03f, 0.90f * BossBarFadeAlpha));
 
-	const bool bIsDefeated = (EncounterState == ECaptainEncounterState::Defeated);
 	float CurrentHP = 0.0f;
 	float MaxHP = 250.0f;
 	float HealthPercent = 0.0f;
@@ -431,8 +451,11 @@ void AGanapatiGameHUD::DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapat
 
 	if (HealthPercent > 0.0f)
 	{
-		// Deep crimson gradient fill
-		DrawTintedBox(BarX, SlotY, BarW * HealthPercent, SlotH, FLinearColor(0.92f, 0.15f, 0.15f, 0.95f * BossBarFadeAlpha));
+		// Deep crimson gradient fill (intensified fiery red when enraged)
+		const FLinearColor FillColor = bIsEnraged
+			? FLinearColor(1.0f, 0.08f, 0.05f, 0.98f * BossBarFadeAlpha)
+			: FLinearColor(0.92f, 0.15f, 0.15f, 0.95f * BossBarFadeAlpha);
+		DrawTintedBox(BarX, SlotY, BarW * HealthPercent, SlotH, FillColor);
 	}
 
 	// 5. Centered Health text over bar
@@ -462,13 +485,13 @@ void AGanapatiGameHUD::DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapat
 		{
 			if (Captain->GetCurrentAttackPattern() == ECaptainAttackPattern::HeavyCleave)
 			{
-				StateBadgeText = TEXT("[HEAVY CLEAVE]");
-				StateBadgeColor = FLinearColor(1.0f, 0.4f, 0.1f, BossBarFadeAlpha);
+				StateBadgeText = bIsEnraged ? TEXT("[ENRAGED: HEAVY CLEAVE]") : TEXT("[HEAVY CLEAVE]");
+				StateBadgeColor = bIsEnraged ? FLinearColor(1.0f, 0.35f, 0.05f, BossBarFadeAlpha) : FLinearColor(1.0f, 0.4f, 0.1f, BossBarFadeAlpha);
 			}
 			else
 			{
-				StateBadgeText = TEXT("[OVERHEAD SMASH]");
-				StateBadgeColor = FLinearColor(1.0f, 0.15f, 0.15f, BossBarFadeAlpha);
+				StateBadgeText = bIsEnraged ? TEXT("[ENRAGED: OVERHEAD SMASH]") : TEXT("[OVERHEAD SMASH]");
+				StateBadgeColor = bIsEnraged ? FLinearColor(1.0f, 0.08f, 0.08f, BossBarFadeAlpha) : FLinearColor(1.0f, 0.15f, 0.15f, BossBarFadeAlpha);
 			}
 		}
 		else if (Captain->IsInRecovery())
@@ -483,18 +506,21 @@ void AGanapatiGameHUD::DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapat
 		}
 		else if (Captain->GetAIState() == EAsuraAIState::Chasing)
 		{
-			StateBadgeText = TEXT("[ADVANCING]");
-			StateBadgeColor = FLinearColor(0.95f, 0.25f, 0.25f, BossBarFadeAlpha);
+			StateBadgeText = bIsEnraged ? TEXT("[ENRAGED: ADVANCING]") : TEXT("[ADVANCING]");
+			StateBadgeColor = bIsEnraged ? FLinearColor(1.0f, 0.20f, 0.15f, BossBarFadeAlpha) : FLinearColor(0.95f, 0.25f, 0.25f, BossBarFadeAlpha);
 		}
 		else
 		{
-			StateBadgeText = TEXT("[ENGAGED]");
-			StateBadgeColor = FLinearColor(0.8f, 0.3f, 0.3f, BossBarFadeAlpha);
+			StateBadgeText = bIsEnraged ? TEXT("[ENRAGED]") : TEXT("[ENGAGED]");
+			StateBadgeColor = FLinearColor(0.85f, 0.3f, 0.3f, BossBarFadeAlpha);
 		}
 	}
 
 	if (!StateBadgeText.IsEmpty())
 	{
-		DrawText(StateBadgeText, StateBadgeColor, BarX + 250.0f, BarY + 43.0f, nullptr, 0.85f);
+		const float ApproxCharWidth = 8.0f;
+		const float TextW = StateBadgeText.Len() * ApproxCharWidth;
+		const float BadgeX = (ScreenW - TextW) * 0.5f;
+		DrawText(StateBadgeText, StateBadgeColor, BadgeX, BarY + 43.0f, nullptr, 0.85f);
 	}
 }
