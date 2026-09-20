@@ -64,45 +64,114 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 
 void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiPlayerCharacter* PlayerChar)
 {
-	const float BoxX = 35.0f;
-	const float BoxY = ScreenH - 120.0f;
-	const float BoxW = 280.0f;
-	const float BoxH = 75.0f;
+	// Bind to OnDivineEnergyChanged delegate on the player character
+	if (BoundPlayerChar.Get() != PlayerChar)
+	{
+		if (BoundPlayerChar.IsValid())
+		{
+			BoundPlayerChar->OnDivineEnergyChanged.RemoveDynamic(this, &AGanapatiGameHUD::HandleDivineEnergyChanged);
+		}
+		BoundPlayerChar = PlayerChar;
+		if (PlayerChar)
+		{
+			PlayerChar->OnDivineEnergyChanged.AddDynamic(this, &AGanapatiGameHUD::HandleDivineEnergyChanged);
+			CachedDivineEnergy = PlayerChar->GetCurrentDivineEnergy();
+			CachedMaxDivineEnergy = FMath::Max(1.0f, PlayerChar->GetMaxDivineEnergy());
+			CachedDivineEnergyPercent = PlayerChar->GetDivineEnergyPercent();
+		}
+	}
 
-	// Background box
-	DrawTintedBox(BoxX, BoxY, BoxW, BoxH, FLinearColor(0.02f, 0.02f, 0.04f, 0.75f));
+	const float BoxX = 35.0f;
+	const float BoxY = ScreenH - 145.0f;
+	const float BoxW = 290.0f;
+	const float BoxH = 115.0f;
+
+	// Background card
+	DrawTintedBox(BoxX, BoxY, BoxW, BoxH, FLinearColor(0.02f, 0.02f, 0.04f, 0.78f));
 	DrawTintedBox(BoxX, BoxY, 3.0f, BoxH, PrimaryFestiveColor);
 
-	// Player Health
+	// ── 1. Player Health Bar ──
 	const float CurrentHP = PlayerChar->GetCurrentHealth();
 	const float MaxHP = FMath::Max(1.0f, PlayerChar->GetMaxHealth());
 	const float HealthPercent = FMath::Clamp(CurrentHP / MaxHP, 0.0f, 1.0f);
 
-	DrawText(FString::Printf(TEXT("HEALTH  %.0f / %.0f"), CurrentHP, MaxHP), FLinearColor::White, BoxX + 15.0f, BoxY + 10.0f, nullptr, 0.95f);
+	DrawText(FString::Printf(TEXT("HEALTH  %.0f / %.0f"), CurrentHP, MaxHP), FLinearColor::White, BoxX + 15.0f, BoxY + 8.0f, nullptr, 0.90f);
 
-	// Health Bar Background
 	const float BarX = BoxX + 15.0f;
-	const float BarY = BoxY + 28.0f;
-	const float BarW = 240.0f;
-	const float BarH = 10.0f;
-	DrawTintedBox(BarX, BarY, BarW, BarH, FLinearColor(0.15f, 0.15f, 0.15f, 0.8f));
+	const float BarW = 255.0f;
+	const float BarH = 8.0f;
 
-	// Filled Health Bar
+	// Health Bar BG
+	const float HealthBarY = BoxY + 24.0f;
+	DrawTintedBox(BarX, HealthBarY, BarW, BarH, FLinearColor(0.12f, 0.12f, 0.14f, 0.85f));
+	// Health Bar Fill
 	const FLinearColor HealthColor = (HealthPercent > 0.3f) ? FLinearColor(0.2f, 0.85f, 0.3f, 1.0f) : FLinearColor(0.9f, 0.2f, 0.2f, 1.0f);
-	DrawTintedBox(BarX, BarY, BarW * HealthPercent, BarH, HealthColor);
+	DrawTintedBox(BarX, HealthBarY, BarW * HealthPercent, BarH, HealthColor);
 
-	// Anti-Gravity Indicator
+	// ── 2. Divine Energy (Modak) Meter ──
+	const bool bIsFull = CachedDivineEnergyPercent >= 0.999f;
+	const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	const float Pulse = bIsFull ? (0.80f + 0.20f * FMath::Abs(FMath::Sin(TimeSec * 4.0f))) : 1.0f;
+
+	const FLinearColor MeterTextColor = bIsFull
+		? FLinearColor(DivineFullColor.R * Pulse, DivineFullColor.G * Pulse, DivineFullColor.B * Pulse, 1.0f)
+		: DivineEnergyColor;
+
+	const FString EnergyText = bIsFull
+		? TEXT("✦ DIVINE POWER: 100% READY ✦")
+		: FString::Printf(TEXT("DIVINE ENERGY  %.0f / %.0f"), CachedDivineEnergy, CachedMaxDivineEnergy);
+
+	DrawText(EnergyText, MeterTextColor, BoxX + 15.0f, BoxY + 38.0f, nullptr, 0.90f);
+
+	const float EnergyBarY = BoxY + 54.0f;
+	// Energy Bar BG
+	DrawTintedBox(BarX, EnergyBarY, BarW, BarH, FLinearColor(0.12f, 0.12f, 0.14f, 0.85f));
+
+	// Energy Bar Fill
+	FLinearColor CurrentMeterFill = bIsFull ? (DivineFullColor * Pulse) : DivineEnergyColor;
+	CurrentMeterFill.A = 1.0f;
+	DrawTintedBox(BarX, EnergyBarY, BarW * FMath::Clamp(CachedDivineEnergyPercent, 0.0f, 1.0f), BarH, CurrentMeterFill);
+
+	// Subtle glowing accent cap on filled edge
+	if (CachedDivineEnergyPercent > 0.02f)
+	{
+		const float CapX = BarX + (BarW * FMath::Clamp(CachedDivineEnergyPercent, 0.0f, 1.0f)) - 2.0f;
+		DrawTintedBox(CapX, EnergyBarY - 1.0f, 3.0f, BarH + 2.0f, bIsFull ? FLinearColor::White : FLinearColor(1.0f, 0.95f, 0.7f, 1.0f));
+	}
+
+	// ── 3. Anti-Gravity Indicator ──
 	UGanapatiMovementComponent* MovComp = PlayerChar->GetGanapatiMovementComponent();
-	bool bAntiGrav = MovComp && MovComp->IsAntiGravityActive();
+	const bool bAntiGrav = MovComp && MovComp->IsAntiGravityActive();
 
 	if (bAntiGrav)
 	{
-		DrawText(TEXT("✦ DIVINE ANTI-GRAVITY: ACTIVE [G] ✦"), AccentCyan, BoxX + 15.0f, BoxY + 46.0f, nullptr, 0.95f);
+		DrawText(TEXT("✦ DIVINE LEVITATION: ACTIVE [G] ✦"), AccentCyan, BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.90f);
 	}
 	else
 	{
-		DrawText(TEXT("Anti-Gravity: Standby (Press [G])"), FLinearColor(0.6f, 0.6f, 0.65f, 0.8f), BoxX + 15.0f, BoxY + 46.0f, nullptr, 0.85f);
+		DrawText(TEXT("Levitation: Standby (Press [G])"), FLinearColor(0.6f, 0.6f, 0.65f, 0.8f), BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.85f);
 	}
+
+	// ── 4. Modak / Offering Hint ──
+	DrawText(TEXT("Melee hits & Shrine offerings generate Divine Energy"), FLinearColor(0.70f, 0.70f, 0.75f, 0.75f), BoxX + 15.0f, BoxY + 90.0f, nullptr, 0.75f);
+}
+
+void AGanapatiGameHUD::HandleDivineEnergyChanged(float NewEnergy, float MaxEnergy)
+{
+	CachedDivineEnergy = NewEnergy;
+	CachedMaxDivineEnergy = FMath::Max(1.0f, MaxEnergy);
+	CachedDivineEnergyPercent = (CachedMaxDivineEnergy > 0.0f) ? FMath::Clamp(NewEnergy / CachedMaxDivineEnergy, 0.0f, 1.0f) : 0.0f;
+}
+
+void AGanapatiGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (BoundPlayerChar.IsValid())
+	{
+		BoundPlayerChar->OnDivineEnergyChanged.RemoveDynamic(this, &AGanapatiGameHUD::HandleDivineEnergyChanged);
+		BoundPlayerChar.Reset();
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AGanapatiGameHUD::DrawInteractionOverlay(float ScreenW, float ScreenH, AGanapatiPlayerCharacter* PlayerChar)
