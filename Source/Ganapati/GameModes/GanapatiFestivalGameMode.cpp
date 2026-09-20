@@ -77,6 +77,15 @@ void AGanapatiFestivalGameMode::BeginPlay()
 			0.2f,
 			false
 		);
+
+		// Periodically check if player enters courtyard skirmish zone
+		World->GetTimerManager().SetTimer(
+			CourtyardAlertTimerHandle,
+			this,
+			&AGanapatiFestivalGameMode::CheckCourtyardProximity,
+			0.5f,
+			true
+		);
 	}
 }
 
@@ -463,5 +472,45 @@ void AGanapatiFestivalGameMode::HandleAsuraDied(AGanapatiAsuraMinion* Asura)
 	else
 	{
 		HUD->ShowQuestToast(FText::FromString(FString::Printf(TEXT("⚔ Asura Banished! (%d/%d) ⚔"), DefeatedAsurasCount, TotalAsurasSpawned)), 2.5f);
+	}
+}
+
+void AGanapatiFestivalGameMode::CheckCourtyardProximity()
+{
+	if (bCourtyardAlertTriggered)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(CourtyardAlertTimerHandle);
+		}
+		return;
+	}
+
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	const FVector PlayerLoc = PlayerPawn->GetActorLocation();
+	const FVector CourtyardCenter(800.0f, 1850.0f, 50.0f);
+	if (FVector::Dist2D(PlayerLoc, CourtyardCenter) <= 1200.0f)
+	{
+		bCourtyardAlertTriggered = true;
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(CourtyardAlertTimerHandle);
+		}
+
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		if (PC)
+		{
+			if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+			{
+				HUD->ShowQuestToast(FText::FromString(TEXT("⚔ Courtyard Skirmish: 2 Corrupted Asura Minions Detected! ⚔")), 3.5f);
+			}
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Courtyard Skirmish alert triggered."));
 	}
 }

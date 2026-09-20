@@ -162,6 +162,9 @@ void AGanapatiAsuraMinion::StartAttack()
 
 	UpdateHealthText();
 
+	// Broadcast attack telegraph hook for visual/audio tell
+	BP_OnAsuraAttackTelegraphed();
+
 	// Schedule physical hit check at the peak of the swing
 	if (UWorld* World = GetWorld())
 	{
@@ -268,6 +271,14 @@ void AGanapatiAsuraMinion::FinishAttack()
 	}
 }
 
+void AGanapatiAsuraMinion::ResetHitStop()
+{
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->GlobalAnimRateScale = 1.0f;
+	}
+}
+
 void AGanapatiAsuraMinion::ApplyDamage(float Damage, AActor* DamageCauser, const FVector& DamageLocation, const FVector& DamageImpulse)
 {
 	if (CurrentState == EAsuraAIState::Dead)
@@ -286,6 +297,26 @@ void AGanapatiAsuraMinion::ApplyDamage(float Damage, AActor* DamageCauser, const
 			MoveComp->AddImpulse(DamageImpulse, true);
 		}
 	}
+
+	// Hit-stop animation freeze on skeletal mesh
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->GlobalAnimRateScale = 0.0f;
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(HitStopTimerHandle);
+			World->GetTimerManager().SetTimer(
+				HitStopTimerHandle,
+				this,
+				&AGanapatiAsuraMinion::ResetHitStop,
+				HitStopDuration,
+				false
+			);
+		}
+	}
+
+	// Trigger hit reaction blueprint hook
+	BP_OnAsuraHitReact(Damage, DamageLocation, DamageImpulse.GetSafeNormal());
 
 	if (CurrentHP <= 0.0f)
 	{
@@ -338,27 +369,38 @@ void AGanapatiAsuraMinion::HandleDeath()
 		World->GetTimerManager().ClearTimer(AttackWindupTimerHandle);
 		World->GetTimerManager().ClearTimer(AttackRecoveryTimerHandle);
 		World->GetTimerManager().ClearTimer(StaggerTimerHandle);
+		World->GetTimerManager().ClearTimer(HitStopTimerHandle);
 	}
 
-	// Disable movement and collisions
+	// Disable movement
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
 		MoveComp->DisableMovement();
 		MoveComp->StopMovementImmediately();
 	}
 
+	// Disable root capsule collisions so it doesn't block player or interfere with ragdoll
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Activate ragdoll physics on skeletal mesh
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->GlobalAnimRateScale = 1.0f;
+		MeshComp->SetCollisionProfileName(TEXT("Ragdoll"));
+		MeshComp->SetSimulatePhysics(true);
+		MeshComp->AddImpulse(FVector::UpVector * 250.0f, NAME_None, true);
+	}
 
 	FloatingHealthText->SetText(FText::FromString(TEXT("DEFEATED")));
 	FloatingHealthText->SetTextRenderColor(FColor(120, 120, 120));
 
+	BP_OnAsuraDeathSequence(FVector::UpVector * 250.0f);
 	OnAsuraDied.Broadcast(this);
 
 	UE_LOG(LogTemp, Warning, TEXT("AGanapatiAsuraMinion [%s]: Defeated and banished!"), *GetName());
 
 	// Clean destruction after brief fade delay
-	SetLifeSpan(3.0f);
+	SetLifeSpan(3.5f);
 }
 
 void AGanapatiAsuraMinion::ApplyHealing(float Healing, AActor* Healer)
@@ -404,8 +446,23 @@ void AGanapatiAsuraMinion::UpdateHealthText()
 		break;
 	}
 
+	// Generate ASCII health gauge bar [==========]
+	const float HealthFrac = FMath::Clamp(MaxHP > 0.0f ? CurrentHP / MaxHP : 0.0f, 0.0f, 1.0f);
+	const int32 TotalBars = 10;
+	const int32 FilledBars = FMath::Clamp(FMath::RoundToInt(HealthFrac * TotalBars), 0, TotalBars);
+
+	FString BarStr;
+	for (int32 i = 0; i < FilledBars; ++i)
+	{
+		BarStr.AppendChar(TEXT('='));
+	}
+	for (int32 i = FilledBars; i < TotalBars; ++i)
+	{
+		BarStr.AppendChar(TEXT('-'));
+	}
+
 	FloatingHealthText->SetText(FText::FromString(
-		FString::Printf(TEXT("ASURA MINION\nHP: %.0f / %.0f\n[%s]"), CurrentHP, MaxHP, *StateStr)
+		FString::Printf(TEXT("ASURA MINION\n[%s] %.0f/%.0f\n[%s]"), *BarStr, CurrentHP, MaxHP, *StateStr)
 	));
 
 	if (CurrentState == EAsuraAIState::Attacking)

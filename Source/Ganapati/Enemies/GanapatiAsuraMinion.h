@@ -101,6 +101,21 @@ protected:
 	/** Updates 3D floating health and status text above minion */
 	void UpdateHealthText();
 
+	/** Resets hit-stop freeze on skeletal mesh */
+	void ResetHitStop();
+
+	/** Blueprint hook triggered when Asura initiates attack telegraph */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Combat")
+	void BP_OnAsuraAttackTelegraphed();
+
+	/** Blueprint hook triggered when Asura takes damage */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Combat")
+	void BP_OnAsuraHitReact(float Damage, const FVector& HitLocation, const FVector& HitDirection);
+
+	/** Blueprint hook triggered when Asura is defeated */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Combat")
+	void BP_OnAsuraDeathSequence(const FVector& FinalImpulse);
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Components")
 	TObjectPtr<UTextRenderComponent> FloatingHealthText;
@@ -130,13 +145,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|AI", meta=(ClampMin=0.5f, Units="s"))
 	float AttackCooldown = 1.8f;
 
-	/** Windup delay before hit check connects */
+	/** Windup delay before hit check connects (telegraph window) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|AI", meta=(ClampMin=0.1f, Units="s"))
 	float AttackWindupTime = 0.45f;
 
 	/** Duration of stagger state on receiving a heavy hit */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|AI", meta=(ClampMin=0.1f, Units="s"))
 	float StaggerDuration = 0.6f;
+
+	/** Brief hit-stop animation freeze duration on hit */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Feel", meta=(ClampMin=0.01f, Units="s"))
+	float HitStopDuration = 0.06f;
 
 	/** Forward distance for melee attack sweep */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat", meta=(ClampMin=20.0f, Units="cm"))
@@ -160,4 +179,5 @@ private:
 	FTimerHandle AttackWindupTimerHandle;
 	FTimerHandle AttackRecoveryTimerHandle;
 	FTimerHandle StaggerTimerHandle;
+	FTimerHandle HitStopTimerHandle;
 };

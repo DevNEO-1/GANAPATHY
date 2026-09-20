@@ -259,6 +259,7 @@ void AGanapatiPlayerCharacter::ApplyDamage(float Damage, AActor* DamageCauser, c
 			}
 		}
 
+		PlayCameraShake(HeavyAttackCameraShakeClass, 0.4f);
 		BP_OnReceivedDamage(ActualDamage, DamageLocation, DamageImpulse.GetSafeNormal());
 	}
 }

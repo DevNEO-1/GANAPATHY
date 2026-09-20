@@ -147,7 +147,12 @@ private:
 
 	FTimerHandle CinematicTimerHandle;
 	FTimerHandle QuestBindTimerHandle;
+	FTimerHandle CourtyardAlertTimerHandle;
 
 	int32 TotalAsurasSpawned = 0;
 	int32 DefeatedAsurasCount = 0;
+	bool bCourtyardAlertTriggered = false;
+
+	/** Checks if player has entered the courtyard and triggers skirmish alert toast */
+	void CheckCourtyardProximity();
 };
