@@ -30,6 +30,10 @@ public:
 
 	virtual void DrawHUD() override;
 
+	/** Displays a temporary quest completion toast banner on HUD */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|HUD")
+	void ShowQuestToast(const FText& InToastText, float InDuration = 3.5f);
+
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -77,4 +81,14 @@ private:
 
 	/** Cached normalized Divine Energy percent [0.0 - 1.0] */
 	float CachedDivineEnergyPercent = 0.0f;
+
+	// ── Phase 5A Subsystem 4: Quest HUD State ──
+	/** Active quest toast message */
+	FText ActiveQuestToast;
+
+	/** Time until current quest toast expires */
+	float QuestToastRemainingTime = 0.0f;
+
+	/** Total duration of current quest toast */
+	float QuestToastDuration = 3.5f;
 };

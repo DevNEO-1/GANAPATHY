@@ -213,6 +213,7 @@ void AGanapatiNPC::HandleInteraction(AActor* Interactor, const FText& Message)
 		}
 
 		BP_OnNPCDialogueSpoken(Interactor, CurrentLine);
+		OnNPCDialogueSpoken.Broadcast(this, Interactor, CurrentLine);
 
 		UE_LOG(LogTemp, Log, TEXT("AGanapatiNPC [%s]: Spoke line %d/%d: %s"),
 			*NPCName, CurrentDialogueIndex + 1, DialogueLines.Num(), *CurrentLine.ToString());

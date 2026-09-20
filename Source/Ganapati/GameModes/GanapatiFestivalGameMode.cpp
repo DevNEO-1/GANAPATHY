@@ -1,9 +1,11 @@
-// Copyright Ganapati Project. All Rights Reserved.
-
 #include "GameModes/GanapatiFestivalGameMode.h"
 #include "Environment/FestivalStreetBuilder.h"
 #include "UI/GanapatiGameHUD.h"
 #include "Camera/CameraActor.h"
+#include "Characters/GanapatiPlayerCharacter.h"
+#include "NPCs/GanapatiNPC.h"
+#include "Interaction/GanapatiInteractable.h"
+#include "Enemies/GanapatiTrainingDummy.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -63,6 +65,18 @@ void AGanapatiFestivalGameMode::BeginPlay()
 
 	EnsureFestivalEnvironment();
 	PlayOpeningCinematic();
+
+	// Bind quest event listeners (slightly deferred to ensure spawned street actors have initialized)
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			QuestBindTimerHandle,
+			this,
+			&AGanapatiFestivalGameMode::BindQuestListeners,
+			0.2f,
+			false
+		);
+	}
 }
 
 void AGanapatiFestivalGameMode::EnsureFestivalEnvironment()
@@ -184,4 +198,226 @@ void AGanapatiFestivalGameMode::TransitionToPlayerControl()
 
 	// Smoothly swoop from cinematic wide angle back into the third-person player camera
 	PC->SetViewTargetWithBlend(PlayerPawn, CinematicBlendDuration, VTBlend_EaseInOut, 2.0f);
+}
+
+FString AGanapatiFestivalGameMode::GetCurrentObjectiveTitle() const
+{
+	switch (CurrentQuestStep)
+	{
+	case ESacredDarshanStep::Step1_SpeakWithAnand:
+		return TEXT("[1/4] Seek the blessings of Halwai Anand (Sweetmaker).");
+	case ESacredDarshanStep::Step2_ReceiveModakPrasadam:
+		return TEXT("[2/4] Taste the Sacred Modak Prasadam at the Sweet Stall.");
+	case ESacredDarshanStep::Step3_GrandPandalPrayer:
+		return TEXT("[3/4] Offer Prayers before Lord Ganesha at the Grand Pandal.");
+	case ESacredDarshanStep::Step4_DamageTrainingDummy:
+		return TEXT("[4/4] Test your divine strength on the Courtyard Training Dummy.");
+	case ESacredDarshanStep::Completed:
+		return TEXT("✦ SACRED DARSHAN COMPLETED — PILGRIMAGE FULFILLED ✦");
+	default:
+		return TEXT("Explore the festival street.");
+	}
+}
+
+FString AGanapatiFestivalGameMode::GetCurrentObjectiveDescription() const
+{
+	switch (CurrentQuestStep)
+	{
+	case ESacredDarshanStep::Step1_SpeakWithAnand:
+		return TEXT("Find Anand near the market entrance stalls and press [E] to talk.");
+	case ESacredDarshanStep::Step2_ReceiveModakPrasadam:
+		return TEXT("Approach the Modak thali table at the sweets stall and press [E] to partake.");
+	case ESacredDarshanStep::Step3_GrandPandalPrayer:
+		return TEXT("Walk to the grand altar at the end of the street and press [E] to perform the prayer.");
+	case ESacredDarshanStep::Step4_DamageTrainingDummy:
+		return TEXT("Enter the courtyard and strike the dummy with a melee combo [LMB] or Divine Shockwave [Q].");
+	case ESacredDarshanStep::Completed:
+		return TEXT("Lord Vighnaharta's grace is upon you. All divine energies are fully replenished!");
+	default:
+		return TEXT("");
+	}
+}
+
+int32 AGanapatiFestivalGameMode::GetCurrentStepNumber() const
+{
+	switch (CurrentQuestStep)
+	{
+	case ESacredDarshanStep::Step1_SpeakWithAnand:
+		return 1;
+	case ESacredDarshanStep::Step2_ReceiveModakPrasadam:
+		return 2;
+	case ESacredDarshanStep::Step3_GrandPandalPrayer:
+		return 3;
+	case ESacredDarshanStep::Step4_DamageTrainingDummy:
+	case ESacredDarshanStep::Completed:
+		return 4;
+	default:
+		return 1;
+	}
+}
+
+void AGanapatiFestivalGameMode::BindQuestListeners()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 1. Bind to Devotee NPCs for Step 1 (Halwai Anand dialogue)
+	TArray<AActor*> NPCs;
+	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiNPC::StaticClass(), NPCs);
+	for (AActor* Actor : NPCs)
+	{
+		if (AGanapatiNPC* NPC = Cast<AGanapatiNPC>(Actor))
+		{
+			NPC->OnNPCDialogueSpoken.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleNPCDialogueSpoken);
+			NPC->OnNPCDialogueSpoken.AddDynamic(this, &AGanapatiFestivalGameMode::HandleNPCDialogueSpoken);
+		}
+	}
+
+	// 2. Bind to Interactables for Step 2 (Modak Stall) and Step 3 (Grand Pandal Prayer)
+	TArray<AActor*> Interactables;
+	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), Interactables);
+	for (AActor* Actor : Interactables)
+	{
+		if (AGanapatiInteractable* Interactable = Cast<AGanapatiInteractable>(Actor))
+		{
+			Interactable->OnInteracted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableInteracted);
+			Interactable->OnInteracted.AddDynamic(this, &AGanapatiFestivalGameMode::HandleInteractableInteracted);
+
+			Interactable->OnPrayerCompleted.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandlePrayerCompleted);
+			Interactable->OnPrayerCompleted.AddDynamic(this, &AGanapatiFestivalGameMode::HandlePrayerCompleted);
+		}
+	}
+
+	// 3. Bind to Training Dummy for Step 4 (Confirmed Combat Damage)
+	TArray<AActor*> Dummies;
+	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiTrainingDummy::StaticClass(), Dummies);
+	for (AActor* Actor : Dummies)
+	{
+		if (AGanapatiTrainingDummy* Dummy = Cast<AGanapatiTrainingDummy>(Actor))
+		{
+			Dummy->OnDamageConfirmed.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleDummyDamageConfirmed);
+			Dummy->OnDamageConfirmed.AddDynamic(this, &AGanapatiFestivalGameMode::HandleDummyDamageConfirmed);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Sacred Darshan quest listeners bound to %d NPCs, %d Interactables, %d Dummies."),
+		NPCs.Num(), Interactables.Num(), Dummies.Num());
+}
+
+void AGanapatiFestivalGameMode::AdvanceQuestStep(ESacredDarshanStep ExpectedCurrentStep, ESacredDarshanStep NextStep, const FText& CompletionToastText)
+{
+	if (CurrentQuestStep != ExpectedCurrentStep)
+	{
+		return;
+	}
+
+	const ESacredDarshanStep PrevStep = CurrentQuestStep;
+	CurrentQuestStep = NextStep;
+
+	// Display completion toast on HUD
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (PC)
+	{
+		if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+		{
+			HUD->ShowQuestToast(CompletionToastText, 4.0f);
+		}
+	}
+
+	OnQuestStepAdvanced.Broadcast(PrevStep, NextStep);
+	BP_OnQuestStepAdvanced(PrevStep, NextStep);
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Quest advanced from Step %d to Step %d: %s"),
+		static_cast<uint8>(PrevStep) + 1, static_cast<uint8>(NextStep) + 1, *CompletionToastText.ToString());
+
+	// If final completion
+	if (NextStep == ESacredDarshanStep::Completed)
+	{
+		// Restore Divine Energy to full 100/100
+		if (PC)
+		{
+			if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PC->GetPawn()))
+			{
+				PlayerChar->AddDivineEnergy(PlayerChar->GetMaxDivineEnergy());
+			}
+		}
+
+		OnQuestCompleted.Broadcast();
+		BP_OnQuestCompleted();
+
+		UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: ✦ SACRED DARSHAN QUEST FULLY COMPLETED! ✦"));
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleNPCDialogueSpoken(AGanapatiNPC* NPC, AActor* Interactor, const FText& SpokenLine)
+{
+	if (CurrentQuestStep != ESacredDarshanStep::Step1_SpeakWithAnand || !NPC)
+	{
+		return;
+	}
+
+	// Verify the NPC is Halwai Anand (Sweetmaker)
+	const FString Name = NPC->GetNPCName();
+	if (Name.Contains(TEXT("Anand")) || Name.Contains(TEXT("Sweetmaker")))
+	{
+		AdvanceQuestStep(
+			ESacredDarshanStep::Step1_SpeakWithAnand,
+			ESacredDarshanStep::Step2_ReceiveModakPrasadam,
+			FText::FromString(TEXT("✓ Step 1 Complete: Blessed by Halwai Anand!"))
+		);
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleInteractableInteracted(AActor* Interactor, const FText& Message)
+{
+	if (CurrentQuestStep != ESacredDarshanStep::Step2_ReceiveModakPrasadam)
+	{
+		return;
+	}
+
+	// Modak Stall interaction broadcasts this with "Prasadam" or tag
+	const FString MsgStr = Message.ToString();
+	if (MsgStr.Contains(TEXT("Modak")) || MsgStr.Contains(TEXT("Prasadam")))
+	{
+		AdvanceQuestStep(
+			ESacredDarshanStep::Step2_ReceiveModakPrasadam,
+			ESacredDarshanStep::Step3_GrandPandalPrayer,
+			FText::FromString(TEXT("✓ Step 2 Complete: Sacred Modak Prasadam received!"))
+		);
+	}
+}
+
+void AGanapatiFestivalGameMode::HandlePrayerCompleted(AActor* Interactor)
+{
+	if (CurrentQuestStep != ESacredDarshanStep::Step3_GrandPandalPrayer)
+	{
+		return;
+	}
+
+	AdvanceQuestStep(
+		ESacredDarshanStep::Step3_GrandPandalPrayer,
+		ESacredDarshanStep::Step4_DamageTrainingDummy,
+		FText::FromString(TEXT("✓ Step 3 Complete: Sacred Darshan of Lord Ganesha Achieved!"))
+	);
+}
+
+void AGanapatiFestivalGameMode::HandleDummyDamageConfirmed(AGanapatiTrainingDummy* Dummy, float DamageTaken, AActor* DamageCauser, const FVector& DamageLocation)
+{
+	if (CurrentQuestStep != ESacredDarshanStep::Step4_DamageTrainingDummy)
+	{
+		return;
+	}
+
+	// Strict requirement: damage must be confirmed and greater than 0
+	if (DamageTaken > 0.0f)
+	{
+		AdvanceQuestStep(
+			ESacredDarshanStep::Step4_DamageTrainingDummy,
+			ESacredDarshanStep::Completed,
+			FText::FromString(TEXT("✦ Step 4 Complete: Divine Strength Proven! Sacred Darshan Fulfilled! ✦"))
+		);
+	}
 }

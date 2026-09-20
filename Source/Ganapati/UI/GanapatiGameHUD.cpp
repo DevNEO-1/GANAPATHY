@@ -4,6 +4,7 @@
 #include "Characters/GanapatiPlayerCharacter.h"
 #include "Interaction/GanapatiInteractionComponent.h"
 #include "Components/GanapatiMovementComponent.h"
+#include "GameModes/GanapatiFestivalGameMode.h"
 #include "Engine/Canvas.h"
 #include "Engine/Font.h"
 
@@ -41,25 +42,86 @@ void AGanapatiGameHUD::DrawTintedBox(float X, float Y, float W, float H, const F
 	DrawRect(Color, X, Y, W, H);
 }
 
+void AGanapatiGameHUD::ShowQuestToast(const FText& InToastText, float InDuration)
+{
+	ActiveQuestToast = InToastText;
+	QuestToastDuration = FMath::Max(0.5f, InDuration);
+	QuestToastRemainingTime = QuestToastDuration;
+}
+
 void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 {
-	const float BannerW = 750.0f;
-	const float BannerH = 65.0f;
+	const float DeltaSeconds = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.016f;
+	if (QuestToastRemainingTime > 0.0f)
+	{
+		QuestToastRemainingTime = FMath::Max(0.0f, QuestToastRemainingTime - DeltaSeconds);
+	}
+
+	AGanapatiFestivalGameMode* FestGM = Cast<AGanapatiFestivalGameMode>(GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr);
+
+	// ── 1. Quest Completion Toast (Pulsing celebratory banner when a step completes) ──
+	if (QuestToastRemainingTime > 0.0f && !ActiveQuestToast.IsEmpty())
+	{
+		const float ToastW = 760.0f;
+		const float ToastH = 46.0f;
+		const float ToastX = (ScreenW - ToastW) * 0.5f;
+		const float ToastY = 18.0f;
+
+		const float AlphaFade = FMath::Clamp(QuestToastRemainingTime / 0.5f, 0.0f, 1.0f);
+		const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+		const float Pulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 6.0f));
+
+		// Glowing toast background
+		DrawTintedBox(ToastX, ToastY, ToastW, ToastH, FLinearColor(0.04f, 0.03f, 0.01f, 0.90f * AlphaFade));
+		DrawTintedBox(ToastX, ToastY, ToastW, 3.0f, FLinearColor(1.0f * Pulse, 0.85f * Pulse, 0.2f, AlphaFade));
+		DrawTintedBox(ToastX, ToastY + ToastH - 2.0f, ToastW, 2.0f, FLinearColor(1.0f * Pulse, 0.7f * Pulse, 0.1f, AlphaFade));
+
+		DrawText(ActiveQuestToast.ToString(), FLinearColor(1.0f, 0.92f, 0.45f, AlphaFade), ToastX + 25.0f, ToastY + 12.0f, nullptr, 1.15f);
+	}
+
+	// ── 2. Dynamic Sacred Darshan Objective Card ──
+	const float BannerW = 780.0f;
+	const float BannerH = 68.0f;
 	const float BannerX = (ScreenW - BannerW) * 0.5f;
-	const float BannerY = 25.0f;
+	const float BannerY = (QuestToastRemainingTime > 0.0f) ? 70.0f : 24.0f;
 
 	// Dark semi-transparent background
-	DrawTintedBox(BannerX, BannerY, BannerW, BannerH, FLinearColor(0.02f, 0.02f, 0.04f, 0.75f));
-	// Golden top accent line
-	DrawTintedBox(BannerX, BannerY, BannerW, 3.0f, PrimaryFestiveColor);
+	DrawTintedBox(BannerX, BannerY, BannerW, BannerH, FLinearColor(0.02f, 0.02f, 0.04f, 0.78f));
 
-	// Title
-	const FString Title = TEXT("✦ VINAYAKA CHATURTHI — FESTIVAL STREET ✦");
-	DrawText(Title, PrimaryFestiveColor, BannerX + 130.0f, BannerY + 12.0f, nullptr, 1.25f);
+	if (FestGM && FestGM->IsQuestCompleted())
+	{
+		// Celebratory Full Completion Banner
+		const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+		const float GoldPulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 4.0f));
 
-	// Sub-objective
-	const FString SubText = TEXT("Explore the bazaar, offer prayers at Lord Ganesha's Pandal [E], and test combat in the courtyard.");
-	DrawText(SubText, FLinearColor(0.85f, 0.85f, 0.9f, 0.9f), BannerX + 45.0f, BannerY + 38.0f, nullptr, 0.9f);
+		// Golden border top and bottom
+		DrawTintedBox(BannerX, BannerY, BannerW, 3.0f, DivineFullColor * GoldPulse);
+		DrawTintedBox(BannerX, BannerY + BannerH - 2.0f, BannerW, 2.0f, PrimaryFestiveColor);
+
+		const FString CompleteTitle = TEXT("✦ SACRED DARSHAN COMPLETED — LORD GANESHA HAS BLESSED YOUR PATH! ✦");
+		DrawText(CompleteTitle, DivineFullColor * GoldPulse, BannerX + 60.0f, BannerY + 12.0f, nullptr, 1.20f);
+
+		const FString CompleteDesc = TEXT("All devotional rites performed! Divine energy fully restored. Explore freely with Lord Vighnaharta's grace.");
+		DrawText(CompleteDesc, FLinearColor(0.9f, 0.9f, 0.95f, 0.95f), BannerX + 35.0f, BannerY + 40.0f, nullptr, 0.90f);
+	}
+	else
+	{
+		// Golden top accent line
+		DrawTintedBox(BannerX, BannerY, BannerW, 3.0f, PrimaryFestiveColor);
+
+		FString HeaderText = TEXT("✦ THE SACRED DARSHAN — FESTIVAL PILGRIMAGE ✦");
+		FString ObjTitle = FestGM ? FestGM->GetCurrentObjectiveTitle() : TEXT("Explore the festival street and seek Lord Ganesha's blessings.");
+		FString ObjDesc = FestGM ? FestGM->GetCurrentObjectiveDescription() : TEXT("Talk to Devotees [E], taste Modak [E], pray at Pandal [E], and practice combat.");
+
+		// Header
+		DrawText(HeaderText, PrimaryFestiveColor, BannerX + 160.0f, BannerY + 10.0f, nullptr, 1.15f);
+
+		// Current objective line with step indicator
+		DrawText(ObjTitle, FLinearColor(1.0f, 0.95f, 0.8f, 1.0f), BannerX + 35.0f, BannerY + 32.0f, nullptr, 1.0f);
+
+		// Helper prompt text
+		DrawText(ObjDesc, FLinearColor(0.75f, 0.75f, 0.8f, 0.85f), BannerX + 35.0f, BannerY + 49.0f, nullptr, 0.80f);
+	}
 }
 
 void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiPlayerCharacter* PlayerChar)

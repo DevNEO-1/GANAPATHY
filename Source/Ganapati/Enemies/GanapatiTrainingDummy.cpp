@@ -71,6 +71,10 @@ void AGanapatiTrainingDummy::ApplyDamage(float Damage, AActor* DamageCauser, con
 
 	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.0f, MaxHP);
 	OnHealthChanged.Broadcast(CurrentHP, MaxHP);
+	if (Damage > 0.0f)
+	{
+		OnDamageConfirmed.Broadcast(this, Damage, DamageCauser, DamageLocation);
+	}
 	UpdateHealthText();
 
 	// Slight physical knockback nudge on hit

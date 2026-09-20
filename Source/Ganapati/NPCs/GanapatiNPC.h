@@ -17,6 +17,8 @@ enum class EGanapatiNPCState : uint8
 	Talking UMETA(DisplayName="Talking")
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnGanapatiNPCSpeechSignature, AGanapatiNPC*, NPC, AActor*, Interactor, const FText&, SpokenLine);
+
 /**
  * AGanapatiNPC
  *
@@ -48,6 +50,11 @@ public:
 	/** Resumes normal idle/wandering behavior */
 	UFUNCTION(BlueprintCallable, Category="Ganapati|NPC")
 	void EndConversation();
+
+public:
+	/** Broadcast when this NPC speaks a dialogue line */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|NPC|Events")
+	FOnGanapatiNPCSpeechSignature OnNPCDialogueSpoken;
 
 protected:
 	virtual void BeginPlay() override;

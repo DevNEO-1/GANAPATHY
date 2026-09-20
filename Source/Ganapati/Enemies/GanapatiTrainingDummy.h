@@ -13,6 +13,7 @@ class UTextRenderComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDummyHealthChangedSignature, float, NewHealth, float, MaxHealth);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDummyDestroyedSignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnDummyDamageConfirmedSignature, AGanapatiTrainingDummy*, Dummy, float, DamageTaken, AActor*, DamageCauser, const FVector&, DamageLocation);
 
 /**
  * AGanapatiTrainingDummy
@@ -52,6 +53,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Combat|Events")
 	FOnDummyDestroyedSignature OnDummyDestroyed;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Combat|Events")
+	FOnDummyDamageConfirmedSignature OnDamageConfirmed;
 
 protected:
 	virtual void BeginPlay() override;
