@@ -5,6 +5,7 @@
 #include "NPCs/GanapatiNPC.h"
 #include "Enemies/GanapatiTrainingDummy.h"
 #include "Enemies/GanapatiAsuraMinion.h"
+#include "Enemies/GanapatiAsuraBrute.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/PointLightComponent.h"
@@ -1814,6 +1815,15 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 			SpawnParams
 		);
 	}
+
+	// ── 2C. Spawn 1 Asura Brute in Combat Courtyard (Phase 5B Subsystem 3) ──
+	const FVector BruteSpawn = ActorOrigin + FVector(800.0f, 2150.0f, 75.0f);
+	World->SpawnActor<AGanapatiAsuraBrute>(
+		AGanapatiAsuraBrute::StaticClass(),
+		BruteSpawn,
+		FRotator(0.0f, 180.0f, 0.0f),
+		SpawnParams
+	);
 
 	// ── 3. Spawn Devotee NPCs along the Festival Street (Phase 5A Subsystem 3) ──
 	struct FNPCRoleSpec

@@ -316,20 +316,24 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 	// 4. Bind to Asura Minions for Courtyard Skirmish Encounter (Phase 5B Subsystem 1)
 	TArray<AActor*> Asuras;
 	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiAsuraMinion::StaticClass(), Asuras);
-	TotalAsurasSpawned = Asuras.Num();
+	TotalAsurasSpawned = 0;
 	DefeatedAsurasCount = 0;
 
 	for (AActor* Actor : Asuras)
 	{
 		if (AGanapatiAsuraMinion* Asura = Cast<AGanapatiAsuraMinion>(Actor))
 		{
-			Asura->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
-			Asura->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+			if (Asura->CountsTowardEncounter())
+			{
+				++TotalAsurasSpawned;
+				Asura->OnAsuraDied.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+				Asura->OnAsuraDied.AddDynamic(this, &AGanapatiFestivalGameMode::HandleAsuraDied);
+			}
 		}
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Sacred Darshan quest listeners bound to %d NPCs, %d Interactables, %d Dummies, %d Asuras."),
-		NPCs.Num(), Interactables.Num(), Dummies.Num(), Asuras.Num());
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Sacred Darshan quest listeners bound to %d NPCs, %d Interactables, %d Dummies, %d Asuras (%d encounter targets)."),
+		NPCs.Num(), Interactables.Num(), Dummies.Num(), Asuras.Num(), TotalAsurasSpawned);
 }
 
 void AGanapatiFestivalGameMode::AdvanceQuestStep(ESacredDarshanStep ExpectedCurrentStep, ESacredDarshanStep NextStep, const FText& CompletionToastText)

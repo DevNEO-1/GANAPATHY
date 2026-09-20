@@ -250,7 +250,7 @@ void AGanapatiAsuraMinion::DoAttackTrace(FName DamageSourceBone)
 					if (ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor))
 					{
 						const FVector HitDir = (HitActor->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-						const FVector Impulse = (HitDir * 400.0f) + (FVector::UpVector * 200.0f);
+						const FVector Impulse = (HitDir * (AttackDamage * 22.0f + 70.0f)) + (FVector::UpVector * 220.0f);
 
 						Damageable->ApplyDamage(AttackDamage, this, Hit.ImpactPoint, Impulse);
 
@@ -289,12 +289,13 @@ void AGanapatiAsuraMinion::ApplyDamage(float Damage, AActor* DamageCauser, const
 	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.0f, MaxHP);
 	OnHealthChanged.Broadcast(CurrentHP, MaxHP);
 
-	// Physics impulse feedback on hit
+	// Physics impulse feedback on hit (scaled by knockback resistance)
 	if (!DamageImpulse.IsNearlyZero())
 	{
 		if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 		{
-			MoveComp->AddImpulse(DamageImpulse, true);
+			const float ImpulseScale = FMath::Clamp(1.0f - KnockbackResistance, 0.0f, 1.0f);
+			MoveComp->AddImpulse(DamageImpulse * ImpulseScale, true);
 		}
 	}
 
@@ -436,7 +437,7 @@ void AGanapatiAsuraMinion::UpdateHealthText()
 		StateStr = TEXT("CHASING");
 		break;
 	case EAsuraAIState::Attacking:
-		StateStr = TEXT("ATTACKING!");
+		StateStr = (AttackWindupTime > 0.6f) ? TEXT("HEAVY SMASH!") : TEXT("ATTACKING!");
 		break;
 	case EAsuraAIState::Staggered:
 		StateStr = TEXT("STAGGERED");
@@ -462,7 +463,7 @@ void AGanapatiAsuraMinion::UpdateHealthText()
 	}
 
 	FloatingHealthText->SetText(FText::FromString(
-		FString::Printf(TEXT("ASURA MINION\n[%s] %.0f/%.0f\n[%s]"), *BarStr, CurrentHP, MaxHP, *StateStr)
+		FString::Printf(TEXT("%s\n[%s] %.0f/%.0f\n[%s]"), *EnemyDisplayName, *BarStr, CurrentHP, MaxHP, *StateStr)
 	));
 
 	if (CurrentState == EAsuraAIState::Attacking)

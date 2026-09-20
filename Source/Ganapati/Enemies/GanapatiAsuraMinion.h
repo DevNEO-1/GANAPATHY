@@ -73,6 +73,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Combat")
 	bool IsDead() const { return CurrentState == EAsuraAIState::Dead; }
 
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat")
+	bool CountsTowardEncounter() const { return bCountsTowardEncounter; }
+
 public:
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Combat|Events")
 	FOnAsuraHealthChangedSignature OnHealthChanged;
@@ -119,6 +122,18 @@ protected:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Components")
 	TObjectPtr<UTextRenderComponent> FloatingHealthText;
+
+	/** Display title for 3D in-world health and status text */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat")
+	FString EnemyDisplayName = TEXT("ASURA MINION");
+
+	/** Resistance against physics impulses (0.0 = full knockback, 1.0 = immovable) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Feel", meta=(ClampMin=0.0f, ClampMax=1.0f))
+	float KnockbackResistance = 0.0f;
+
+	/** Whether defeating this enemy counts toward the courtyard skirmish victory condition */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat")
+	bool bCountsTowardEncounter = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat", meta=(ClampMin=1.0f))
 	float MaxHP = 50.0f;
