@@ -87,7 +87,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	/** Core AI state tick */
-	void UpdateAI(float DeltaTime);
+	virtual void UpdateAI(float DeltaTime);
 
 	/** Initiates melee attack sequence */
 	virtual void StartAttack();
@@ -96,7 +96,7 @@ protected:
 	void PerformAttackHitCheck();
 
 	/** Concludes attack recovery */
-	void FinishAttack();
+	virtual void FinishAttack();
 
 	/** Recovers from stagger */
 	void RecoverFromStagger();
@@ -184,7 +184,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|AI")
 	float ChaseSpeed = 360.0f;
 
-private:
+protected:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AGanapatiPlayerCharacter> TargetPlayer;
 
