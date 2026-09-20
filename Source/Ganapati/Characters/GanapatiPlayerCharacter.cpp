@@ -10,6 +10,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/World.h"
+#include "Engine/OverlapResult.h"
 #include "TimerManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
@@ -590,3 +591,105 @@ void AGanapatiPlayerCharacter::DoInteract()
 	InteractionComponent->TryInteract();
 }
 
+void AGanapatiPlayerCharacter::DoDivineShockwave()
+{
+	if (bIsDead)
+	{
+		return;
+	}
+
+	// Activation requires exactly DivineShockwaveCost (100.0f).
+	// If insufficient, ConsumeDivineEnergy returns false, does nothing, and consumes nothing.
+	if (!ConsumeDivineEnergy(DivineShockwaveCost))
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("AGanapatiPlayerCharacter::DoDivineShockwave: Insufficient Divine Energy (requires %f, have %f)."),
+			DivineShockwaveCost, CurrentDivineEnergy);
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector Origin = GetActorLocation();
+	const float Radius = DivineShockwaveRadius;
+
+	UE_LOG(LogTemp, Warning, TEXT("AGanapatiPlayerCharacter::DoDivineShockwave: ACTIVATED at %s (Radius: %f cm)"),
+		*Origin.ToString(), Radius);
+
+	// Re-use Phase 4A camera feedback for impactful feel
+	PlayCameraShake(HeavyAttackCameraShakeClass, HeavyAttackShakeScale * 1.5f);
+
+	// Broadcast delegate and invoke Blueprint hook for VFX/SFX
+	OnDivineShockwaveTriggered.Broadcast(Origin, Radius);
+	BP_OnDivineShockwaveTriggered(Origin, Radius);
+
+	// Radial overlap query for valid combatants
+	TArray<FOverlapResult> Overlaps;
+	FCollisionShape SphereShape = FCollisionShape::MakeSphere(Radius);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(DivineShockwave), false, this);
+	QueryParams.AddIgnoredActor(this);
+
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_PhysicsBody);
+
+	World->OverlapMultiByObjectType(
+		Overlaps,
+		Origin,
+		FQuat::Identity,
+		ObjectQueryParams,
+		SphereShape,
+		QueryParams
+	);
+
+	TSet<AActor*> ProcessedActors;
+
+	for (const FOverlapResult& Overlap : Overlaps)
+	{
+		AActor* HitActor = Overlap.GetActor();
+		if (!HitActor || HitActor == this || ProcessedActors.Contains(HitActor))
+		{
+			continue;
+		}
+
+		if (ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor))
+		{
+			ProcessedActors.Add(HitActor);
+
+			const FVector TargetLocation = HitActor->GetActorLocation();
+			FVector Direction2D = TargetLocation - Origin;
+			Direction2D.Z = 0.0f;
+
+			if (Direction2D.IsNearlyZero())
+			{
+				Direction2D = GetActorForwardVector();
+				Direction2D.Z = 0.0f;
+			}
+			Direction2D.Normalize();
+
+			// Radial knockback (1200 cm/s) with upward launch component (600 cm/s)
+			const FVector LaunchImpulse = (Direction2D * DivineShockwaveKnockbackImpulse) + (FVector::UpVector * DivineShockwaveLaunchImpulse);
+			const FVector HitPoint = Overlap.Component.IsValid() ? Overlap.Component->GetComponentLocation() : TargetLocation;
+
+			// Apply combat damage and impulse through ICombatDamageable interface
+			Damageable->ApplyDamage(DivineShockwaveDamage, this, HitPoint, LaunchImpulse);
+
+			// If target is a Character, ensure clean physics launch transition into Falling mode
+			if (ACharacter* TargetCharacter = Cast<ACharacter>(HitActor))
+			{
+				TargetCharacter->LaunchCharacter(LaunchImpulse, true, true);
+			}
+
+			// Broadcast hit enemy Blueprint hook
+			BP_OnDivineShockwaveHitEnemy(HitActor, HitPoint, LaunchImpulse);
+
+			UE_LOG(LogTemp, Log, TEXT("AGanapatiPlayerCharacter::DoDivineShockwave: Hit %s (Damage: %f, Impulse: %s)"),
+				*HitActor->GetName(), DivineShockwaveDamage, *LaunchImpulse.ToString());
+		}
+	}
+}

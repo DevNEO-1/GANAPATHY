@@ -18,6 +18,7 @@ class UCameraShakeBase;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiHealthChangedSignature, float, NewHealth, float, MaxHealth);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGanapatiCharacterDiedSignature);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiDivineEnergyChangedSignature, float, NewEnergy, float, MaxEnergy);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGanapatiDivineShockwaveSignature, const FVector&, Origin, float, Radius);
 
 /**
  * AGanapatiPlayerCharacter
@@ -111,6 +112,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Input")
 	virtual void DoInteract();
 
+	/** Triggers the Divine Shockwave ability if Divine Energy is full */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Input")
+	virtual void DoDivineShockwave();
+
 	/** Resets current health to MaxHP */
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Health")
 	void ResetHealth();
@@ -188,6 +193,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|DivineEnergy|Events")
 	FOnGanapatiDivineEnergyChangedSignature OnDivineEnergyChanged;
 
+	/** Broadcast when Divine Shockwave is activated */
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|DivineEnergy|Events")
+	FOnGanapatiDivineShockwaveSignature OnDivineShockwaveTriggered;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void Landed(const FHitResult& Hit) override;
@@ -226,6 +235,14 @@ protected:
 	/** Blueprint implementable hook when Divine Energy changes */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|DivineEnergy")
 	void BP_OnDivineEnergyChanged(float NewEnergy, float MaxEnergy);
+
+	/** Blueprint implementable hook when Divine Shockwave is activated */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|DivineEnergy")
+	void BP_OnDivineShockwaveTriggered(const FVector& Origin, float Radius);
+
+	/** Blueprint implementable hook when Divine Shockwave impacts an enemy */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|DivineEnergy")
+	void BP_OnDivineShockwaveHitEnemy(AActor* HitEnemy, const FVector& HitLocation, const FVector& LaunchImpulse);
 
 protected:
 	/** Camera boom positioning the camera behind the character */
@@ -348,6 +365,27 @@ protected:
 	/** Amount of Divine Energy gained per confirmed melee attack hit */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy", meta=(ClampMin=0.0f))
 	float DivineEnergyPerHit = 10.0f;
+
+	// ── Phase 4B Subsystem 3: Divine Shockwave ──
+	/** Divine Energy cost to trigger the Divine Shockwave ability */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy|Shockwave", meta=(ClampMin=1.0f))
+	float DivineShockwaveCost = 100.0f;
+
+	/** Radius of the radial shockwave in centimeters */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy|Shockwave", meta=(ClampMin=10.0f, Units="cm"))
+	float DivineShockwaveRadius = 500.0f;
+
+	/** Damage dealt to combatants hit by the shockwave */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy|Shockwave", meta=(ClampMin=0.0f))
+	float DivineShockwaveDamage = 40.0f;
+
+	/** Radial horizontal knockback speed applied to combatants */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy|Shockwave", meta=(ClampMin=0.0f, Units="cm/s"))
+	float DivineShockwaveKnockbackImpulse = 1200.0f;
+
+	/** Vertical launch speed applied to combatants */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|DivineEnergy|Shockwave", meta=(ClampMin=0.0f, Units="cm/s"))
+	float DivineShockwaveLaunchImpulse = 600.0f;
 
 private:
 	bool bIsDead = false;

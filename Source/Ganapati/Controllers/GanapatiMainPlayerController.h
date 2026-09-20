@@ -28,6 +28,8 @@ class AGanapatiPlayerCharacter;
  *   Right Click   → Charged Attack (hold + release)
  *   G             → Toggle Anti-Gravity
  *   V             → Toggle Camera Shoulder Side
+ *   E             → Interact (shrine prayer / blessing)
+ *   Q             → Divine Shockwave (Ganesha's Radiance)
  */
 UCLASS()
 class GANAPATI_API AGanapatiMainPlayerController : public APlayerController
@@ -73,6 +75,9 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> IA_Interact;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> IA_DivineShockwave;
+
 	// ── Mapping Context ──
 	UPROPERTY(Transient)
 	TObjectPtr<UInputMappingContext> IMC_Ganapati;
@@ -99,4 +104,5 @@ private:
 	void HandleAntiGravityToggle();
 	void HandleCameraSideToggle();
 	void HandleInteract();
+	void HandleDivineShockwave();
 };

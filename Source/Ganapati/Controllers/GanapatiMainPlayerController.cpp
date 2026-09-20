@@ -66,6 +66,10 @@ void AGanapatiMainPlayerController::CreateInputActionsAndMappingContext()
 	IA_Interact = NewObject<UInputAction>(this, TEXT("IA_Ganapati_Interact"));
 	IA_Interact->ValueType = EInputActionValueType::Boolean;
 
+	// Divine Shockwave: Boolean (press)
+	IA_DivineShockwave = NewObject<UInputAction>(this, TEXT("IA_Ganapati_DivineShockwave"));
+	IA_DivineShockwave->ValueType = EInputActionValueType::Boolean;
+
 	// ── Create Mapping Context ──
 	IMC_Ganapati = NewObject<UInputMappingContext>(this, TEXT("IMC_Ganapati"));
 
@@ -194,6 +198,14 @@ void AGanapatiMainPlayerController::CreateInputActionsAndMappingContext()
 	{
 		IMC_Ganapati->MapKey(IA_Interact, EKeys::Gamepad_FaceButton_Left);
 	}
+
+	// --- Divine Shockwave (Q / Gamepad FaceButton Top) ---
+	{
+		IMC_Ganapati->MapKey(IA_DivineShockwave, EKeys::Q);
+	}
+	{
+		IMC_Ganapati->MapKey(IA_DivineShockwave, EKeys::Gamepad_FaceButton_Top);
+	}
 }
 
 void AGanapatiMainPlayerController::BeginPlay()
@@ -291,6 +303,9 @@ void AGanapatiMainPlayerController::SetupInputComponent()
 		// Interact
 		EIC->BindAction(IA_Interact, ETriggerEvent::Started, this, &AGanapatiMainPlayerController::HandleInteract);
 		EIC->BindAction(IA_Interact, ETriggerEvent::Triggered, this, &AGanapatiMainPlayerController::HandleInteract);
+
+		// Divine Shockwave (Q)
+		EIC->BindAction(IA_DivineShockwave, ETriggerEvent::Started, this, &AGanapatiMainPlayerController::HandleDivineShockwave);
 	}
 }
 
@@ -432,3 +447,11 @@ void AGanapatiMainPlayerController::HandleInteract()
 	}
 }
 
+void AGanapatiMainPlayerController::HandleDivineShockwave()
+{
+	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: HandleDivineShockwave (Q Pressed)"));
+	if (AGanapatiPlayerCharacter* Char = GetGanapatiCharacter())
+	{
+		Char->DoDivineShockwave();
+	}
+}
