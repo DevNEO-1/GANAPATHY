@@ -12,11 +12,20 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "TimerManager.h"
+#include "Camera/CameraShakeBase.h"
+#include "UObject/ConstructorHelpers.h"
 
 AGanapatiFestivalGameMode::AGanapatiFestivalGameMode()
 {
 	// Set custom festival HUD
 	HUDClass = AGanapatiGameHUD::StaticClass();
+
+	static ConstructorHelpers::FClassFinder<UCameraShakeBase> ShakeFinder(
+		TEXT("/Game/Variant_Combat/Blueprints/BP_CameraShake_Hit_Enemy"));
+	if (ShakeFinder.Succeeded())
+	{
+		EncounterStartCameraShakeClass = ShakeFinder.Class;
+	}
 }
 
 AActor* AGanapatiFestivalGameMode::ChoosePlayerStart_Implementation(AController* Player)
@@ -471,17 +480,52 @@ void AGanapatiFestivalGameMode::HandleAsuraDied(AGanapatiAsuraMinion* Asura)
 
 	if (TotalAsurasSpawned > 0 && DefeatedAsurasCount >= TotalAsurasSpawned)
 	{
-		HUD->ShowQuestToast(FText::FromString(TEXT("⚔ Victory! Courtyard Cleared: All Asura Minions Banished! ⚔")), 4.5f);
+		EncounterState = ECourtyardEncounterState::Completed;
+		HUD->ShowQuestToast(FText::FromString(TEXT("⚔ Victory! Courtyard Cleared: All 2 Asura Minions Banished! ⚔")), 5.0f);
 	}
 	else
 	{
-		HUD->ShowQuestToast(FText::FromString(FString::Printf(TEXT("⚔ Asura Banished! (%d/%d) ⚔"), DefeatedAsurasCount, TotalAsurasSpawned)), 2.5f);
+		const int32 Remaining = FMath::Max(0, TotalAsurasSpawned - DefeatedAsurasCount);
+		HUD->ShowQuestToast(FText::FromString(FString::Printf(TEXT("⚔ Asura Minion Banished! [%d / %d] — %d Remaining ⚔"),
+			DefeatedAsurasCount, TotalAsurasSpawned, Remaining)), 3.0f);
 	}
+}
+
+void AGanapatiFestivalGameMode::StartCourtyardEncounter()
+{
+	if (EncounterState != ECourtyardEncounterState::NotStarted)
+	{
+		return;
+	}
+
+	EncounterState = ECourtyardEncounterState::Active;
+	bCourtyardAlertTriggered = true;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(CourtyardAlertTimerHandle);
+	}
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (PC)
+	{
+		if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+		{
+			HUD->ShowQuestToast(FText::FromString(TEXT("⚔ Courtyard Skirmish: 2 Corrupted Asura Minions Detected! ⚔")), 4.0f);
+		}
+
+		if (EncounterStartCameraShakeClass)
+		{
+			PC->ClientStartCameraShake(EncounterStartCameraShakeClass, 0.35f);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Courtyard Skirmish encounter started (Official Targets: %d)."), TotalAsurasSpawned);
 }
 
 void AGanapatiFestivalGameMode::CheckCourtyardProximity()
 {
-	if (bCourtyardAlertTriggered)
+	if (EncounterState != ECourtyardEncounterState::NotStarted)
 	{
 		if (UWorld* World = GetWorld())
 		{
@@ -500,21 +544,6 @@ void AGanapatiFestivalGameMode::CheckCourtyardProximity()
 	const FVector CourtyardCenter(800.0f, 1850.0f, 50.0f);
 	if (FVector::Dist2D(PlayerLoc, CourtyardCenter) <= 1200.0f)
 	{
-		bCourtyardAlertTriggered = true;
-		if (UWorld* World = GetWorld())
-		{
-			World->GetTimerManager().ClearTimer(CourtyardAlertTimerHandle);
-		}
-
-		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-		if (PC)
-		{
-			if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
-			{
-				HUD->ShowQuestToast(FText::FromString(TEXT("⚔ Courtyard Skirmish: 2 Corrupted Asura Minions Detected! ⚔")), 3.5f);
-			}
-		}
-
-		UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: Courtyard Skirmish alert triggered."));
+		StartCourtyardEncounter();
 	}
 }

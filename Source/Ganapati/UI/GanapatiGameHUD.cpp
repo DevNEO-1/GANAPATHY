@@ -122,6 +122,41 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 		// Helper prompt text
 		DrawText(ObjDesc, FLinearColor(0.75f, 0.75f, 0.8f, 0.85f), BannerX + 35.0f, BannerY + 49.0f, nullptr, 0.80f);
 	}
+
+	// ── 3. Active Courtyard Skirmish Combat Card (Phase 5B Subsystem 4) ──
+	if (FestGM && (FestGM->IsEncounterActive() || FestGM->IsEncounterCompleted()))
+	{
+		const float SkirmishW = 660.0f;
+		const float SkirmishH = 46.0f;
+		const float SkirmishX = (ScreenW - SkirmishW) * 0.5f;
+		const float SkirmishY = BannerY + BannerH + 8.0f;
+
+		const bool bCompleted = FestGM->IsEncounterCompleted();
+		const int32 Defeated = FestGM->GetEncounterDefeatedCount();
+		const int32 Total = FestGM->GetEncounterTotalCount();
+
+		// Dark background
+		DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, SkirmishH, FLinearColor(0.03f, 0.02f, 0.02f, 0.85f));
+
+		if (bCompleted)
+		{
+			// Emerald victory border
+			DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, 2.0f, FLinearColor(0.2f, 0.9f, 0.35f, 0.95f));
+			DrawTintedBox(SkirmishX, SkirmishY + SkirmishH - 2.0f, SkirmishW, 2.0f, FLinearColor(0.2f, 0.9f, 0.35f, 0.95f));
+
+			const FString VictoryText = FString::Printf(TEXT("⚔ COURTYARD CLEARED — ALL %d ASURA MINIONS BANISHED [ %d / %d ] ⚔"), Total, Defeated, Total);
+			DrawText(VictoryText, FLinearColor(0.35f, 1.0f, 0.5f, 1.0f), SkirmishX + 40.0f, SkirmishY + 14.0f, nullptr, 1.05f);
+		}
+		else
+		{
+			// Hostile crimson/amber combat border
+			DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, 2.0f, FLinearColor(1.0f, 0.3f, 0.15f, 0.95f));
+			DrawTintedBox(SkirmishX, SkirmishY + SkirmishH - 2.0f, SkirmishW, 2.0f, FLinearColor(1.0f, 0.5f, 0.15f, 0.85f));
+
+			const FString ObjectiveText = FString::Printf(TEXT("⚔ COURTYARD SKIRMISH: Defeat Corrupted Minions  [ %d / %d ] ⚔"), Defeated, Total);
+			DrawText(ObjectiveText, FLinearColor(1.0f, 0.85f, 0.3f, 1.0f), SkirmishX + 55.0f, SkirmishY + 14.0f, nullptr, 1.05f);
+		}
+	}
 }
 
 void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiPlayerCharacter* PlayerChar)

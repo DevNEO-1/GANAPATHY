@@ -11,6 +11,18 @@ class AGanapatiNPC;
 class AGanapatiInteractable;
 class AGanapatiTrainingDummy;
 class AGanapatiAsuraMinion;
+class UCameraShakeBase;
+
+/**
+ * Progression states for the Courtyard Skirmish combat encounter.
+ */
+UENUM(BlueprintType)
+enum class ECourtyardEncounterState : uint8
+{
+	NotStarted UMETA(DisplayName="Not Started"),
+	Active UMETA(DisplayName="Active"),
+	Completed UMETA(DisplayName="Completed")
+};
 
 /**
  * Progression steps for the Sacred Darshan festival quest.
@@ -76,6 +88,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Quest")
 	void AdvanceQuestStep(ESacredDarshanStep ExpectedCurrentStep, ESacredDarshanStep NextStep, const FText& CompletionToastText);
 
+	/** Returns the current state of the courtyard combat encounter */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Encounter")
+	ECourtyardEncounterState GetEncounterState() const { return EncounterState; }
+
+	/** Returns true if the courtyard encounter is currently active */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Encounter")
+	bool IsEncounterActive() const { return EncounterState == ECourtyardEncounterState::Active; }
+
+	/** Returns true if the courtyard encounter has been cleared */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Encounter")
+	bool IsEncounterCompleted() const { return EncounterState == ECourtyardEncounterState::Completed; }
+
+	/** Returns the count of defeated official encounter targets */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Encounter")
+	int32 GetEncounterDefeatedCount() const { return DefeatedAsurasCount; }
+
+	/** Returns total official encounter targets (2) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Combat|Encounter")
+	int32 GetEncounterTotalCount() const { return TotalAsurasSpawned; }
+
+	/** Starts the courtyard skirmish encounter once per session */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Encounter")
+	void StartCourtyardEncounter();
+
 public:
 	/** Broadcast when a quest step advances */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Quest|Events")
@@ -140,6 +176,14 @@ protected:
 	/** Current active step of the Sacred Darshan quest */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Quest")
 	ESacredDarshanStep CurrentQuestStep = ESacredDarshanStep::Step1_SpeakWithAnand;
+
+	/** Current progression state of the Courtyard Skirmish encounter */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Combat|Encounter")
+	ECourtyardEncounterState EncounterState = ECourtyardEncounterState::NotStarted;
+
+	/** Camera shake triggered when courtyard combat begins */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Encounter")
+	TSubclassOf<UCameraShakeBase> EncounterStartCameraShakeClass;
 
 private:
 	UPROPERTY(Transient)
