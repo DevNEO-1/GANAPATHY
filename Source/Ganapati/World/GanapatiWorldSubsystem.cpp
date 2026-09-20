@@ -222,8 +222,12 @@ void UGanapatiWorldSubsystem::RegisterStreetBuilder(AFestivalStreetBuilder* InSt
 	if (RegisteredStreetBuilder != InStreetBuilder)
 	{
 		RegisteredStreetBuilder = InStreetBuilder;
+		// Streaming synchronization: push current session state to newly registered/streamed-in builder
+		InStreetBuilder->SetSacredPathUnlocked(WorldState.bSacredPathUnlocked);
+
 		OnStreetBuilderRegistered.Broadcast(InStreetBuilder);
-		UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Registered FestivalStreetBuilder [%s]"), *InStreetBuilder->GetName());
+		UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Registered FestivalStreetBuilder [%s] (Synced SacredPathUnlocked=%s)"),
+			*InStreetBuilder->GetName(), WorldState.bSacredPathUnlocked ? TEXT("TRUE") : TEXT("FALSE"));
 	}
 }
 
@@ -306,4 +310,98 @@ AGanapatiAsuraCaptain* UGanapatiWorldSubsystem::GetRegisteredCaptain() const
 AFestivalStreetBuilder* UGanapatiWorldSubsystem::GetRegisteredStreetBuilder() const
 {
 	return RegisteredStreetBuilder.Get();
+}
+
+void UGanapatiWorldSubsystem::SetWorldState(const FGanapatiWorldState& NewState)
+{
+	const bool bStoryChanged = (WorldState.StoryProgressionState != NewState.StoryProgressionState);
+	const bool bSacredPathChanged = (WorldState.bSacredPathUnlocked != NewState.bSacredPathUnlocked);
+	const bool bPurificationChanged = (WorldState.bCourtyardPurified != NewState.bCourtyardPurified);
+
+	if (!bStoryChanged && !bSacredPathChanged && !bPurificationChanged)
+	{
+		return;
+	}
+
+	const EStoryProgressionState PrevStory = WorldState.StoryProgressionState;
+	WorldState = NewState;
+
+	if (bSacredPathChanged && RegisteredStreetBuilder.IsValid())
+	{
+		RegisteredStreetBuilder->SetSacredPathUnlocked(WorldState.bSacredPathUnlocked);
+	}
+
+	if (bStoryChanged)
+	{
+		OnStoryProgressionChanged.Broadcast(PrevStory, WorldState.StoryProgressionState);
+	}
+	if (bSacredPathChanged)
+	{
+		OnSacredPathChanged.Broadcast(WorldState.bSacredPathUnlocked);
+	}
+	if (bPurificationChanged)
+	{
+		OnCourtyardPurified.Broadcast(WorldState.bCourtyardPurified);
+	}
+
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Updated WorldState [Story=%d, SacredPath=%s, Purified=%s]"),
+		static_cast<uint8>(WorldState.StoryProgressionState),
+		WorldState.bSacredPathUnlocked ? TEXT("TRUE") : TEXT("FALSE"),
+		WorldState.bCourtyardPurified ? TEXT("TRUE") : TEXT("FALSE"));
+}
+
+void UGanapatiWorldSubsystem::SetStoryProgressionState(EStoryProgressionState NewState)
+{
+	if (WorldState.StoryProgressionState == NewState)
+	{
+		return;
+	}
+
+	const EStoryProgressionState PrevState = WorldState.StoryProgressionState;
+	WorldState.StoryProgressionState = NewState;
+
+	OnStoryProgressionChanged.Broadcast(PrevState, NewState);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Story progression transitioned from %d to %d"),
+		static_cast<uint8>(PrevState), static_cast<uint8>(NewState));
+}
+
+void UGanapatiWorldSubsystem::SetSacredPathUnlocked(bool bUnlocked)
+{
+	if (WorldState.bSacredPathUnlocked == bUnlocked)
+	{
+		return;
+	}
+
+	WorldState.bSacredPathUnlocked = bUnlocked;
+
+	if (RegisteredStreetBuilder.IsValid())
+	{
+		RegisteredStreetBuilder->SetSacredPathUnlocked(bUnlocked);
+	}
+
+	OnSacredPathChanged.Broadcast(bUnlocked);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Sacred Path gate state set to %s"),
+		bUnlocked ? TEXT("UNLOCKED") : TEXT("LOCKED"));
+}
+
+void UGanapatiWorldSubsystem::SetCourtyardPurified(bool bPurified)
+{
+	if (WorldState.bCourtyardPurified == bPurified)
+	{
+		return;
+	}
+
+	WorldState.bCourtyardPurified = bPurified;
+
+	OnCourtyardPurified.Broadcast(bPurified);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Courtyard purified state set to %s"),
+		bPurified ? TEXT("PURIFIED") : TEXT("NOT PURIFIED"));
 }

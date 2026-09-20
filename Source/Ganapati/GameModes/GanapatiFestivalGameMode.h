@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameModes/GanapatiMainGameMode.h"
+#include "World/GanapatiWorldSubsystem.h"
 #include "GanapatiFestivalGameMode.generated.h"
 
 class ACameraActor;
@@ -54,21 +55,6 @@ enum class ESacredDarshanStep : uint8
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSacredDarshanStepAdvancedSignature, ESacredDarshanStep, CompletedStep, ESacredDarshanStep, NewStep);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSacredDarshanCompletedSignature);
 
-/**
- * Progression states for the overarching festival narrative (Phase 5D Subsystem 1).
- */
-UENUM(BlueprintType)
-enum class EStoryProgressionState : uint8
-{
-	FestivalBeginning UMETA(DisplayName="Festival Beginning"),
-	SacredDarshan UMETA(DisplayName="Sacred Darshan"),
-	CourtyardAttack UMETA(DisplayName="Courtyard Attack"),
-	CaptainDefeated UMETA(DisplayName="Captain Defeated"),
-	CourtyardPurified UMETA(DisplayName="Courtyard Purified"),
-	SacredJourney UMETA(DisplayName="Sacred Journey")
-};
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnStoryProgressionChangedSignature, EStoryProgressionState, PreviousState, EStoryProgressionState, NewState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSacredJourneyUnlockedSignature);
 
 /**

@@ -128,6 +128,15 @@ void AFestivalStreetBuilder::BeginPlay()
 		PopulateWorldActors();
 		bHasConstructed = true;
 	}
+
+	// Ensure physical gate reflects current session world state upon streaming in
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			SetSacredPathUnlocked(Subsystem->IsSacredPathUnlocked());
+		}
+	}
 }
 
 void AFestivalStreetBuilder::EndPlay(const EEndPlayReason::Type EndPlayReason)

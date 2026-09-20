@@ -33,12 +33,51 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldStreetBuilderRegisteredSigna
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldStreetBuilderUnregisteredSignature, AFestivalStreetBuilder*, StreetBuilder);
 
 /**
+ * Progression states for the overarching festival narrative.
+ * Reused project-wide as the authoritative story/world progression enum.
+ */
+UENUM(BlueprintType)
+enum class EStoryProgressionState : uint8
+{
+	FestivalBeginning UMETA(DisplayName="Festival Beginning"),
+	SacredDarshan     UMETA(DisplayName="Sacred Darshan"),
+	CourtyardAttack   UMETA(DisplayName="Courtyard Attack"),
+	CaptainDefeated   UMETA(DisplayName="Captain Defeated"),
+	CourtyardPurified UMETA(DisplayName="Courtyard Purified"),
+	SacredJourney     UMETA(DisplayName="Sacred Journey")
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnStoryProgressionChangedSignature, EStoryProgressionState, PreviousState, EStoryProgressionState, NewState);
+
+/**
+ * Session-persistent world gameplay state.
+ * Owned authoritatively by UGanapatiWorldSubsystem; persists across World Partition cell streaming.
+ */
+USTRUCT(BlueprintType)
+struct FGanapatiWorldState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	EStoryProgressionState StoryProgressionState = EStoryProgressionState::FestivalBeginning;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	bool bSacredPathUnlocked = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	bool bCourtyardPurified = false;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldStateChangedSignature, const FGanapatiWorldState&, NewWorldState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldSacredPathChangedSignature, bool, bUnlocked);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldCourtyardPurifiedSignature, bool, bPurified);
+
+/**
  * UGanapatiWorldSubsystem
  *
- * Central runtime actor registry for "GANAPATI: The Divine Journey".
+ * Central runtime actor registry and session world-state owner for "GANAPATI: The Divine Journey".
  * Manages world actors reactively without reliance on global actor scans (GetAllActorsOfClass).
- * Ensures streaming-safe lifecycle handling across World Partition, level streaming,
- * and dynamic spawning.
+ * Ensures streaming-safe lifecycle handling and authoritative session state persistence across
  */
 UCLASS()
 class GANAPATI_API UGanapatiWorldSubsystem : public UWorldSubsystem
@@ -118,6 +157,37 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|Registry")
 	AFestivalStreetBuilder* GetRegisteredStreetBuilder() const;
 
+	// ── Session World State APIs ──
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	const FGanapatiWorldState& GetWorldState() const { return WorldState; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetWorldState(const FGanapatiWorldState& NewState);
+
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	EStoryProgressionState GetStoryProgressionState() const { return WorldState.StoryProgressionState; }
+
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	EStoryProgressionState GetWorldProgressionState() const { return WorldState.StoryProgressionState; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetStoryProgressionState(EStoryProgressionState NewState);
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetWorldProgressionState(EStoryProgressionState NewState) { SetStoryProgressionState(NewState); }
+
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	bool IsSacredPathUnlocked() const { return WorldState.bSacredPathUnlocked; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetSacredPathUnlocked(bool bUnlocked);
+
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	bool IsCourtyardPurified() const { return WorldState.bCourtyardPurified; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetCourtyardPurified(bool bPurified);
+
 public:
 	// ── Broadcast Delegates ──
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
@@ -156,7 +226,23 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
 	FOnWorldStreetBuilderUnregisteredSignature OnStreetBuilderUnregistered;
 
+	// ── World State Delegates ──
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnWorldStateChangedSignature OnWorldStateChanged;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnStoryProgressionChangedSignature OnStoryProgressionChanged;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnWorldSacredPathChangedSignature OnSacredPathChanged;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnWorldCourtyardPurifiedSignature OnCourtyardPurified;
+
 private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Subsystem|WorldState", meta=(AllowPrivateAccess="true"))
+	FGanapatiWorldState WorldState;
+
 	UPROPERTY(Transient)
 	TArray<TWeakObjectPtr<AGanapatiNPC>> RegisteredNPCs;
 

@@ -83,6 +83,28 @@ void AGanapatiFestivalGameMode::BeginPlay()
 
 	if (UWorld* World = GetWorld())
 	{
+		// Synchronize session world state with UGanapatiWorldSubsystem
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			if (Subsystem->GetStoryProgressionState() != EStoryProgressionState::FestivalBeginning)
+			{
+				CurrentStoryState = Subsystem->GetStoryProgressionState();
+			}
+			else
+			{
+				Subsystem->SetStoryProgressionState(CurrentStoryState);
+			}
+
+			if (Subsystem->IsSacredPathUnlocked())
+			{
+				bSacredJourneyUnlocked = true;
+			}
+			if (Subsystem->IsCourtyardPurified())
+			{
+				bCourtyardPurified = true;
+			}
+		}
+
 		// Periodically check if player enters courtyard skirmish zone
 		World->GetTimerManager().SetTimer(
 			CourtyardAlertTimerHandle,
@@ -232,6 +254,10 @@ void AGanapatiFestivalGameMode::TransitionToPlayerControl()
 	{
 		const EStoryProgressionState PrevState = CurrentStoryState;
 		CurrentStoryState = EStoryProgressionState::SacredDarshan;
+		if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+		{
+			Subsystem->SetStoryProgressionState(CurrentStoryState);
+		}
 		OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
 		BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
 	}
@@ -729,6 +755,10 @@ void AGanapatiFestivalGameMode::StartCourtyardEncounter()
 	{
 		const EStoryProgressionState PrevState = CurrentStoryState;
 		CurrentStoryState = EStoryProgressionState::CourtyardAttack;
+		if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+		{
+			Subsystem->SetStoryProgressionState(CurrentStoryState);
+		}
 		OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
 		BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
 	}
@@ -893,6 +923,10 @@ void AGanapatiFestivalGameMode::HandleCaptainDied(AGanapatiAsuraMinion* Asura)
 	{
 		const EStoryProgressionState PrevState = CurrentStoryState;
 		CurrentStoryState = EStoryProgressionState::CaptainDefeated;
+		if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+		{
+			Subsystem->SetStoryProgressionState(CurrentStoryState);
+		}
 		OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
 		BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
 	}
@@ -914,12 +948,20 @@ void AGanapatiFestivalGameMode::HandlePlayerDied()
 		if (bCourtyardPurified)
 		{
 			bCourtyardPurified = false;
+			if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+			{
+				Subsystem->SetCourtyardPurified(false);
+			}
 		}
 
 		if (CurrentStoryState == EStoryProgressionState::CaptainDefeated || CurrentStoryState == EStoryProgressionState::CourtyardPurified)
 		{
 			const EStoryProgressionState PrevState = CurrentStoryState;
 			CurrentStoryState = EStoryProgressionState::CourtyardAttack;
+			if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+			{
+				Subsystem->SetStoryProgressionState(CurrentStoryState);
+			}
 			OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
 			BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
 		}
@@ -1003,6 +1045,11 @@ void AGanapatiFestivalGameMode::TriggerCourtyardPurification()
 	// 4. Advance overarching story progression state to CourtyardPurified (Phase 5D Subsystem 1)
 	const EStoryProgressionState PrevState = CurrentStoryState;
 	CurrentStoryState = EStoryProgressionState::CourtyardPurified;
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		Subsystem->SetCourtyardPurified(true);
+		Subsystem->SetStoryProgressionState(CurrentStoryState);
+	}
 	OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
 	BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
 
@@ -1032,6 +1079,11 @@ void AGanapatiFestivalGameMode::OnDivineStoryMomentCompleted()
 	bSacredJourneyUnlocked = true;
 	const EStoryProgressionState PrevState = CurrentStoryState;
 	CurrentStoryState = EStoryProgressionState::SacredJourney;
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		Subsystem->SetSacredPathUnlocked(true);
+		Subsystem->SetStoryProgressionState(CurrentStoryState);
+	}
 
 	// Unlock physical Sacred Path gate in world
 	SetSacredPathUnlocked(true);
@@ -1064,6 +1116,11 @@ void AGanapatiFestivalGameMode::SetBossBarrierActive(bool bActive)
 
 void AGanapatiFestivalGameMode::SetSacredPathUnlocked(bool bUnlocked)
 {
+	bSacredJourneyUnlocked = bUnlocked;
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		Subsystem->SetSacredPathUnlocked(bUnlocked);
+	}
 	if (CachedStreetBuilder.IsValid())
 	{
 		CachedStreetBuilder->SetSacredPathUnlocked(bUnlocked);
