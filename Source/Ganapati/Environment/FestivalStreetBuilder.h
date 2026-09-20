@@ -38,8 +38,20 @@ protected:
 	/** Constructs the festival street layout */
 	void BuildFestivalEnvironment();
 
-	/** Builds the main street road and boundary buildings */
+	/** Builds the entrance plaza, welcome arch (Maha-Dwar), and player threshold */
+	void BuildEntrancePlaza();
+
+	/** Builds the main street road, curbs, and plinths */
 	void BuildStreetAndBuildings();
+
+	/** Builds the central festival plaza (Chowk) with rangoli dais and performance stage */
+	void BuildCentralPlaza();
+
+	/** Builds side paths and galies (North Mandir Gali and South Bazaar Lane) */
+	void BuildSidePaths();
+
+	/** Builds multi-tier vernacular houses and wada facades along both flanks */
+	void BuildTownhouses();
 
 	/** Builds bazaar stalls along the street */
 	void BuildBazaarStalls();
@@ -63,7 +75,8 @@ protected:
 		const FVector& RelativeLocation,
 		const FRotator& RelativeRotation,
 		const FVector& RelativeScale,
-		bool bEnableCollision = true
+		bool bEnableCollision = true,
+		UMaterialInterface* CustomMaterial = nullptr
 	);
 
 	/** Helper to create warm festive point lights */
@@ -89,10 +102,19 @@ protected:
 	TObjectPtr<UStaticMesh> RampMesh;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> ChamferCubeMesh;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMesh> QuarterCylinderMesh;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> PrototypeGridMaterial;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> DarkMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> GrayMaterial;
 
 	/** Number of wandering NPCs to spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Spawning", meta=(ClampMin=1, ClampMax=20))

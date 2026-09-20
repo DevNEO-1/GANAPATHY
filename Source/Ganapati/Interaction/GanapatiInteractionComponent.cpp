@@ -31,17 +31,12 @@ void UGanapatiInteractionComponent::BeginPlay()
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-			AGanapatiInteractable* Shrine = World->SpawnActor<AGanapatiInteractable>(
+			World->SpawnActor<AGanapatiInteractable>(
 				AGanapatiInteractable::StaticClass(),
 				PandalShrineLocation,
 				FRotator::ZeroRotator,
 				SpawnParams
 			);
-
-			if (Shrine)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("GANAPATI: GanapatiInteractionComponent spawned Ganesh Pandal Shrine at %s"), *PandalShrineLocation.ToString());
-			}
 		}
 	}
 }
@@ -108,8 +103,10 @@ void UGanapatiInteractionComponent::UpdateFocusedInteractable()
 
 bool UGanapatiInteractionComponent::TryInteract()
 {
-	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: TryInteract() — FocusedInteractable=%s"),
-		FocusedInteractable ? *FocusedInteractable->GetName() : TEXT("NULL"));
+	if (!FocusedInteractable)
+	{
+		UpdateFocusedInteractable();
+	}
 
 	if (!FocusedInteractable)
 	{

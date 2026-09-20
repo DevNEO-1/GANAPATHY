@@ -25,6 +25,8 @@ class GANAPATI_API AGanapatiFestivalGameMode : public AGanapatiMainGameMode
 public:
 	AGanapatiFestivalGameMode();
 
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
 protected:
 	virtual void BeginPlay() override;
 

@@ -90,9 +90,6 @@ void UGanapatiCombatComponent::StartChargedAttack()
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: StartChargedAttack() — bIsAttacking=%d, ChargedAttackMontage=%s"),
-		bIsAttacking, ChargedAttackMontage ? *ChargedAttackMontage->GetName() : TEXT("NULL"));
-
 	bIsChargingAttack = true;
 	bHasReleasedChargedAttack = false;
 	bHasLoopedChargedAttack = false;
@@ -110,8 +107,6 @@ void UGanapatiCombatComponent::StopChargedAttack()
 {
 	bIsChargingAttack = false;
 	bHasReleasedChargedAttack = true;
-
-	UE_LOG(LogTemp, Warning, TEXT("GANAPATI: StopChargedAttack() — jumping to section '%s'"), *ChargeAttackSection.ToString());
 
 	// Jump directly to the release heavy strike section if montage is playing
 	if (USkeletalMeshComponent* Mesh = GetOwnerMesh())

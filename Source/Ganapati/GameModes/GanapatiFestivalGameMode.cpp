@@ -7,12 +7,54 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerStart.h"
 #include "TimerManager.h"
 
 AGanapatiFestivalGameMode::AGanapatiFestivalGameMode()
 {
 	// Set custom festival HUD
 	HUDClass = AGanapatiGameHUD::StaticClass();
+}
+
+AActor* AGanapatiFestivalGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return Super::ChoosePlayerStart_Implementation(Player);
+	}
+
+	TArray<AActor*> PlayerStarts;
+	UGameplayStatics::GetAllActorsOfClass(World, APlayerStart::StaticClass(), PlayerStarts);
+
+	for (AActor* StartActor : PlayerStarts)
+	{
+		if (APlayerStart* Start = Cast<APlayerStart>(StartActor))
+		{
+			if (Start->PlayerStartTag == FName(TEXT("FestivalStart")))
+			{
+				return Start;
+			}
+		}
+	}
+
+	if (PlayerStarts.Num() > 0)
+	{
+		AActor* BestStart = PlayerStarts[0];
+		float BestDistSq = FVector::DistSquared(BestStart->GetActorLocation(), FVector(-1300.0f, 0.0f, 50.0f));
+		for (AActor* StartActor : PlayerStarts)
+		{
+			float DistSq = FVector::DistSquared(StartActor->GetActorLocation(), FVector(-1300.0f, 0.0f, 50.0f));
+			if (DistSq < BestDistSq)
+			{
+				BestDistSq = DistSq;
+				BestStart = StartActor;
+			}
+		}
+		return BestStart;
+	}
+
+	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
 void AGanapatiFestivalGameMode::BeginPlay()
@@ -31,7 +73,40 @@ void AGanapatiFestivalGameMode::EnsureFestivalEnvironment()
 		return;
 	}
 
-	// Check if a FestivalStreetBuilder already exists in the level
+	// 1. Ensure PlayerStart is positioned at the beginning of the festival street
+	TArray<AActor*> ExistingStarts;
+	UGameplayStatics::GetAllActorsOfClass(World, APlayerStart::StaticClass(), ExistingStarts);
+	bool bHasFestivalStart = false;
+	for (AActor* StartActor : ExistingStarts)
+	{
+		if (APlayerStart* Start = Cast<APlayerStart>(StartActor))
+		{
+			if (Start->PlayerStartTag == FName(TEXT("FestivalStart")))
+			{
+				bHasFestivalStart = true;
+				break;
+			}
+		}
+	}
+
+	if (!bHasFestivalStart)
+	{
+		FActorSpawnParameters StartSpawnParams;
+		StartSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		APlayerStart* FestivalStart = World->SpawnActor<APlayerStart>(
+			APlayerStart::StaticClass(),
+			FVector(-1300.0f, 0.0f, 50.0f),
+			FRotator(0.0f, 0.0f, 0.0f),
+			StartSpawnParams
+		);
+		if (FestivalStart)
+		{
+			FestivalStart->PlayerStartTag = FName(TEXT("FestivalStart"));
+		}
+	}
+
+	// 2. Check if a FestivalStreetBuilder already exists in the level
 	TArray<AActor*> ExistingBuilders;
 	UGameplayStatics::GetAllActorsOfClass(World, AFestivalStreetBuilder::StaticClass(), ExistingBuilders);
 
