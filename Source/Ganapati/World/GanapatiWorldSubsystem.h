@@ -33,6 +33,22 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldStreetBuilderRegisteredSigna
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldStreetBuilderUnregisteredSignature, AFestivalStreetBuilder*, StreetBuilder);
 
 /**
+ * World regions for open-world spatial tracking and discovery milestones (Phase 6C).
+ */
+UENUM(BlueprintType)
+enum class EWorldRegion : uint8
+{
+	FestivalStreet     UMETA(DisplayName="Festival Street"),
+	CourtyardSanctuary UMETA(DisplayName="Courtyard Sanctuary"),
+	SacredPathAscent   UMETA(DisplayName="Sacred Path Ascent"),
+	MountainThreshold  UMETA(DisplayName="Mountain Threshold")
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWorldRegionChangedSignature, EWorldRegion, PreviousRegion, EWorldRegion, NewRegion);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDivineAscensionDiscoveredSignature, bool, bDiscovered);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPilgrimageMilestoneReachedSignature, bool, bReached);
+
+/**
  * Progression states for the overarching festival narrative.
  * Reused project-wide as the authoritative story/world progression enum.
  */
@@ -66,6 +82,15 @@ struct FGanapatiWorldState
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
 	bool bCourtyardPurified = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	EWorldRegion ActiveRegion = EWorldRegion::FestivalStreet;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	bool bDivineAscensionDiscovered = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	bool bMountainThresholdReached = false;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldStateChangedSignature, const FGanapatiWorldState&, NewWorldState);
@@ -188,6 +213,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
 	void SetCourtyardPurified(bool bPurified);
 
+	// ── Phase 6C: World Region & Milestone APIs ──
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	EWorldRegion GetActiveRegion() const { return WorldState.ActiveRegion; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetActiveRegion(EWorldRegion NewRegion);
+
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	bool IsDivineAscensionDiscovered() const { return WorldState.bDivineAscensionDiscovered; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetDivineAscensionDiscovered(bool bDiscovered);
+
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	bool IsMountainThresholdReached() const { return WorldState.bMountainThresholdReached; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetMountainThresholdReached(bool bReached);
+
 public:
 	// ── Broadcast Delegates ──
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
@@ -238,6 +282,15 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
 	FOnWorldCourtyardPurifiedSignature OnCourtyardPurified;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnWorldRegionChangedSignature OnWorldRegionChanged;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnDivineAscensionDiscoveredSignature OnDivineAscensionDiscovered;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnPilgrimageMilestoneReachedSignature OnPilgrimageMilestoneReached;
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Subsystem|WorldState", meta=(AllowPrivateAccess="true"))

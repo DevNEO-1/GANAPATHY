@@ -8,6 +8,7 @@
 
 class UStaticMeshComponent;
 class UPointLightComponent;
+class UBoxComponent;
 class UMaterialInstanceDynamic;
 class AGanapatiInteractable;
 class AGanapatiNPC;
@@ -200,6 +201,25 @@ protected:
 	/** Number of wandering NPCs to spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Spawning", meta=(ClampMin=1, ClampMax=20))
 	int32 NPCSpawnCount = 5;
+
+	// ── Phase 6C: World Region & Milestone Discovery Trigger Volumes ──
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> CourtyardTriggerComp;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> SacredPathTriggerComp;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> MountainThresholdTriggerComp;
+
+	UFUNCTION()
+	void HandleCourtyardBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void HandleSacredPathBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void HandleMountainThresholdBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
 	bool bHasConstructed = false;

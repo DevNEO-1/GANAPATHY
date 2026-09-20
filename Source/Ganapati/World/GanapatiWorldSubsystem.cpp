@@ -317,13 +317,17 @@ void UGanapatiWorldSubsystem::SetWorldState(const FGanapatiWorldState& NewState)
 	const bool bStoryChanged = (WorldState.StoryProgressionState != NewState.StoryProgressionState);
 	const bool bSacredPathChanged = (WorldState.bSacredPathUnlocked != NewState.bSacredPathUnlocked);
 	const bool bPurificationChanged = (WorldState.bCourtyardPurified != NewState.bCourtyardPurified);
+	const bool bRegionChanged = (WorldState.ActiveRegion != NewState.ActiveRegion);
+	const bool bAscensionChanged = (WorldState.bDivineAscensionDiscovered != NewState.bDivineAscensionDiscovered);
+	const bool bThresholdChanged = (WorldState.bMountainThresholdReached != NewState.bMountainThresholdReached);
 
-	if (!bStoryChanged && !bSacredPathChanged && !bPurificationChanged)
+	if (!bStoryChanged && !bSacredPathChanged && !bPurificationChanged && !bRegionChanged && !bAscensionChanged && !bThresholdChanged)
 	{
 		return;
 	}
 
 	const EStoryProgressionState PrevStory = WorldState.StoryProgressionState;
+	const EWorldRegion PrevRegion = WorldState.ActiveRegion;
 	WorldState = NewState;
 
 	if (bSacredPathChanged && RegisteredStreetBuilder.IsValid())
@@ -343,13 +347,28 @@ void UGanapatiWorldSubsystem::SetWorldState(const FGanapatiWorldState& NewState)
 	{
 		OnCourtyardPurified.Broadcast(WorldState.bCourtyardPurified);
 	}
+	if (bRegionChanged)
+	{
+		OnWorldRegionChanged.Broadcast(PrevRegion, WorldState.ActiveRegion);
+	}
+	if (bAscensionChanged)
+	{
+		OnDivineAscensionDiscovered.Broadcast(WorldState.bDivineAscensionDiscovered);
+	}
+	if (bThresholdChanged)
+	{
+		OnPilgrimageMilestoneReached.Broadcast(WorldState.bMountainThresholdReached);
+	}
 
 	OnWorldStateChanged.Broadcast(WorldState);
 
-	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Updated WorldState [Story=%d, SacredPath=%s, Purified=%s]"),
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Updated WorldState [Story=%d, Region=%d, SacredPath=%s, Purified=%s, Ascension=%s, Mountain=%s]"),
 		static_cast<uint8>(WorldState.StoryProgressionState),
+		static_cast<uint8>(WorldState.ActiveRegion),
 		WorldState.bSacredPathUnlocked ? TEXT("TRUE") : TEXT("FALSE"),
-		WorldState.bCourtyardPurified ? TEXT("TRUE") : TEXT("FALSE"));
+		WorldState.bCourtyardPurified ? TEXT("TRUE") : TEXT("FALSE"),
+		WorldState.bDivineAscensionDiscovered ? TEXT("TRUE") : TEXT("FALSE"),
+		WorldState.bMountainThresholdReached ? TEXT("TRUE") : TEXT("FALSE"));
 }
 
 void UGanapatiWorldSubsystem::SetStoryProgressionState(EStoryProgressionState NewState)
@@ -404,4 +423,53 @@ void UGanapatiWorldSubsystem::SetCourtyardPurified(bool bPurified)
 
 	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Courtyard purified state set to %s"),
 		bPurified ? TEXT("PURIFIED") : TEXT("NOT PURIFIED"));
+}
+
+void UGanapatiWorldSubsystem::SetActiveRegion(EWorldRegion NewRegion)
+{
+	if (WorldState.ActiveRegion == NewRegion)
+	{
+		return;
+	}
+
+	const EWorldRegion PrevRegion = WorldState.ActiveRegion;
+	WorldState.ActiveRegion = NewRegion;
+
+	OnWorldRegionChanged.Broadcast(PrevRegion, NewRegion);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Active world region changed from %d to %d"),
+		static_cast<uint8>(PrevRegion), static_cast<uint8>(NewRegion));
+}
+
+void UGanapatiWorldSubsystem::SetDivineAscensionDiscovered(bool bDiscovered)
+{
+	if (WorldState.bDivineAscensionDiscovered == bDiscovered)
+	{
+		return;
+	}
+
+	WorldState.bDivineAscensionDiscovered = bDiscovered;
+
+	OnDivineAscensionDiscovered.Broadcast(bDiscovered);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Divine Ascension discovered state set to %s"),
+		bDiscovered ? TEXT("TRUE") : TEXT("FALSE"));
+}
+
+void UGanapatiWorldSubsystem::SetMountainThresholdReached(bool bReached)
+{
+	if (WorldState.bMountainThresholdReached == bReached)
+	{
+		return;
+	}
+
+	WorldState.bMountainThresholdReached = bReached;
+
+	OnPilgrimageMilestoneReached.Broadcast(bReached);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Mountain Threshold reached state set to %s"),
+		bReached ? TEXT("TRUE") : TEXT("FALSE"));
 }

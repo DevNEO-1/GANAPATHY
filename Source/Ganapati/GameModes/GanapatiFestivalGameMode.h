@@ -181,6 +181,27 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Story", meta=(DisplayName="On Sacred Journey Unlocked"))
 	void BP_OnSacredJourneyUnlocked();
 
+	// ── Phase 6C: World Region & Milestone APIs ──
+	/** Returns current active world region (Phase 6C) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|World")
+	EWorldRegion GetActiveRegion() const;
+
+	/** Returns true if player has discovered Divine Ascension traversal (Phase 6C) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|World")
+	bool IsDivineAscensionDiscovered() const;
+
+	/** Returns true if player has reached the Mountain Threshold dais (Phase 6C) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|World")
+	bool IsMountainThresholdReached() const;
+
+	/** Blueprint implementable event fired when Divine Ascension is discovered (Phase 6C) */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|World", meta=(DisplayName="On Divine Ascension Discovered"))
+	void BP_OnDivineAscensionDiscovered();
+
+	/** Blueprint implementable event fired when the Mountain Threshold is reached (Phase 6C) */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|World", meta=(DisplayName="On Mountain Threshold Reached"))
+	void BP_OnMountainThresholdReached();
+
 public:
 	/** Broadcast when a quest step advances */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Quest|Events")
@@ -269,6 +290,16 @@ protected:
 
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|Events")
 	void HandleStreetBuilderUnregistered(AFestivalStreetBuilder* StreetBuilder);
+
+	// ── Phase 6C: Subsystem Region & Milestone Handlers ──
+	UFUNCTION()
+	void HandleWorldRegionChanged(EWorldRegion PreviousRegion, EWorldRegion NewRegion);
+
+	UFUNCTION()
+	void HandleDivineAscensionDiscovered(bool bDiscovered);
+
+	UFUNCTION()
+	void HandlePilgrimageMilestoneReached(bool bReached);
 
 	/** Blueprint hook when quest step advances */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Quest")

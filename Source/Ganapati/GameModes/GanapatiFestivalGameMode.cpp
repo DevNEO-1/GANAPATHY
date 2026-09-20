@@ -267,6 +267,14 @@ FString AGanapatiFestivalGameMode::GetCurrentObjectiveTitle() const
 {
 	if (CurrentStoryState == EStoryProgressionState::SacredJourney)
 	{
+		if (IsMountainThresholdReached())
+		{
+			return TEXT("✦ PILGRIMAGE MILESTONE: Threshold of Mount Kailash Reached ✦");
+		}
+		if (IsDivineAscensionDiscovered())
+		{
+			return TEXT("OBJECTIVE: Traverse the Ascent to the Mountain Threshold");
+		}
 		return TEXT("OBJECTIVE: Follow the Sacred Path");
 	}
 
@@ -291,6 +299,14 @@ FString AGanapatiFestivalGameMode::GetCurrentObjectiveDescription() const
 {
 	if (CurrentStoryState == EStoryProgressionState::SacredJourney)
 	{
+		if (IsMountainThresholdReached())
+		{
+			return TEXT("You stand at the sacred gateway to the divine peaks. The pilgrimage continues!");
+		}
+		if (IsDivineAscensionDiscovered())
+		{
+			return TEXT("Divine Anti-Gravity awakened [G]. Leap across the sacred crags toward the mountain threshold.");
+		}
 		return TEXT("The courtyard is purified. Proceed through the eastern gate onto the sacred path.");
 	}
 
@@ -370,6 +386,14 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 		Subsystem->OnStreetBuilderRegistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleStreetBuilderRegistered);
 		Subsystem->OnStreetBuilderUnregistered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleStreetBuilderUnregistered);
 		Subsystem->OnStreetBuilderUnregistered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleStreetBuilderUnregistered);
+
+		// Phase 6C: World Region & Milestone Delegates
+		Subsystem->OnWorldRegionChanged.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleWorldRegionChanged);
+		Subsystem->OnWorldRegionChanged.AddDynamic(this, &AGanapatiFestivalGameMode::HandleWorldRegionChanged);
+		Subsystem->OnDivineAscensionDiscovered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleDivineAscensionDiscovered);
+		Subsystem->OnDivineAscensionDiscovered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleDivineAscensionDiscovered);
+		Subsystem->OnPilgrimageMilestoneReached.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandlePilgrimageMilestoneReached);
+		Subsystem->OnPilgrimageMilestoneReached.AddDynamic(this, &AGanapatiFestivalGameMode::HandlePilgrimageMilestoneReached);
 
 		// 2. Process all actors already registered before GameMode initialized
 		for (AGanapatiNPC* NPC : Subsystem->GetRegisteredNPCs())
@@ -1130,4 +1154,73 @@ void AGanapatiFestivalGameMode::SetSacredPathUnlocked(bool bUnlocked)
 AGanapatiAsuraCaptain* AGanapatiFestivalGameMode::GetActiveCaptain() const
 {
 	return CachedCaptain.Get();
+}
+
+EWorldRegion AGanapatiFestivalGameMode::GetActiveRegion() const
+{
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		return Subsystem->GetActiveRegion();
+	}
+	return EWorldRegion::FestivalStreet;
+}
+
+bool AGanapatiFestivalGameMode::IsDivineAscensionDiscovered() const
+{
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		return Subsystem->IsDivineAscensionDiscovered();
+	}
+	return false;
+}
+
+bool AGanapatiFestivalGameMode::IsMountainThresholdReached() const
+{
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		return Subsystem->IsMountainThresholdReached();
+	}
+	return false;
+}
+
+void AGanapatiFestivalGameMode::HandleWorldRegionChanged(EWorldRegion PreviousRegion, EWorldRegion NewRegion)
+{
+	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: World Region transitioned from %d to %d"),
+		static_cast<uint8>(PreviousRegion), static_cast<uint8>(NewRegion));
+}
+
+void AGanapatiFestivalGameMode::HandleDivineAscensionDiscovered(bool bDiscovered)
+{
+	if (bDiscovered)
+	{
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		if (PC)
+		{
+			if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+			{
+				HUD->ShowQuestToast(FText::FromString(TEXT("✦ DIVINE ASCENSION UNLOCKED: ANTI-GRAVITY TRAVERSAL [G] ✦")), 5.0f);
+			}
+		}
+
+		BP_OnDivineAscensionDiscovered();
+		UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ DIVINE ASCENSION DISCOVERED! Player can traverse vertical crags using Anti-Gravity [G]. ✦"));
+	}
+}
+
+void AGanapatiFestivalGameMode::HandlePilgrimageMilestoneReached(bool bReached)
+{
+	if (bReached)
+	{
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		if (PC)
+		{
+			if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+			{
+				HUD->ShowQuestToast(FText::FromString(TEXT("✦ PILGRIMAGE MILESTONE REACHED — THRESHOLD OF MOUNT KAILASH ✦")), 6.0f);
+			}
+		}
+
+		BP_OnMountainThresholdReached();
+		UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ PILGRIMAGE MILESTONE REACHED! Player reached the Mountain Threshold Dais. ✦"));
+	}
 }

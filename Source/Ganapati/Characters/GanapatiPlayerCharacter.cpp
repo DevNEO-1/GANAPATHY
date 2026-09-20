@@ -14,6 +14,7 @@
 #include "TimerManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "World/GanapatiWorldSubsystem.h"
 
 AGanapatiPlayerCharacter::AGanapatiPlayerCharacter()
 {
@@ -568,6 +569,22 @@ void AGanapatiPlayerCharacter::DoToggleAntiGravity()
 	}
 
 	MovementComponent->ToggleAntiGravityMode();
+
+	// Phase 6C: Divine Anti-Gravity Traversal discovery during Sacred Journey
+	if (MovementComponent->IsAntiGravityActive())
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+			{
+				if ((Subsystem->GetActiveRegion() == EWorldRegion::SacredPathAscent || Subsystem->GetActiveRegion() == EWorldRegion::MountainThreshold)
+					&& !Subsystem->IsDivineAscensionDiscovered())
+				{
+					Subsystem->SetDivineAscensionDiscovered(true);
+				}
+			}
+		}
+	}
 }
 
 void AGanapatiPlayerCharacter::DoToggleCameraSide()

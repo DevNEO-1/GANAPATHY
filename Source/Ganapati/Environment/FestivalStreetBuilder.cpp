@@ -9,6 +9,7 @@
 #include "Enemies/GanapatiAsuraCaptain.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
@@ -1746,6 +1747,20 @@ void AFestivalStreetBuilder::BuildCombatAndParkourCourtyard()
 	{
 		BossBarrierComp->SetVisibility(false);
 	}
+
+	// ── Phase 6C: Courtyard Sanctuary Trigger Volume ──
+	CourtyardTriggerComp = NewObject<UBoxComponent>(this, TEXT("CourtyardTriggerComp"));
+	if (CourtyardTriggerComp)
+	{
+		CourtyardTriggerComp->RegisterComponent();
+		CourtyardTriggerComp->AttachToComponent(RootScene, FAttachmentTransformRules::KeepRelativeTransform);
+		CourtyardTriggerComp->SetRelativeLocation(CourtCenter + FVector(0.0f, 0.0f, 150.0f));
+		CourtyardTriggerComp->SetBoxExtent(FVector(850.0f, 850.0f, 200.0f));
+		CourtyardTriggerComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		CourtyardTriggerComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+		CourtyardTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		CourtyardTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleCourtyardBeginOverlap);
+	}
 }
 
 void AFestivalStreetBuilder::BuildSacredPath(const FVector& CourtCenter)
@@ -1782,6 +1797,33 @@ void AFestivalStreetBuilder::BuildSacredPath(const FVector& CourtCenter)
 	if (L3) SacredPathLights.Add(L3);
 	if (L4) SacredPathLights.Add(L4);
 	if (L5) SacredPathLights.Add(L5);
+
+	// ── Phase 6C: Sacred Path & Mountain Threshold Trigger Volumes ──
+	SacredPathTriggerComp = NewObject<UBoxComponent>(this, TEXT("SacredPathTriggerComp"));
+	if (SacredPathTriggerComp)
+	{
+		SacredPathTriggerComp->RegisterComponent();
+		SacredPathTriggerComp->AttachToComponent(RootScene, FAttachmentTransformRules::KeepRelativeTransform);
+		SacredPathTriggerComp->SetRelativeLocation(CourtCenter + FVector(0.0f, 1500.0f, 150.0f));
+		SacredPathTriggerComp->SetBoxExtent(FVector(320.0f, 550.0f, 200.0f));
+		SacredPathTriggerComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		SacredPathTriggerComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+		SacredPathTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		SacredPathTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleSacredPathBeginOverlap);
+	}
+
+	MountainThresholdTriggerComp = NewObject<UBoxComponent>(this, TEXT("MountainThresholdTriggerComp"));
+	if (MountainThresholdTriggerComp)
+	{
+		MountainThresholdTriggerComp->RegisterComponent();
+		MountainThresholdTriggerComp->AttachToComponent(RootScene, FAttachmentTransformRules::KeepRelativeTransform);
+		MountainThresholdTriggerComp->SetRelativeLocation(CourtCenter + FVector(0.0f, 2150.0f, 150.0f));
+		MountainThresholdTriggerComp->SetBoxExtent(FVector(420.0f, 180.0f, 200.0f));
+		MountainThresholdTriggerComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		MountainThresholdTriggerComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+		MountainThresholdTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		MountainThresholdTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleMountainThresholdBeginOverlap);
+	}
 }
 
 void AFestivalStreetBuilder::SetBossBarrierActive(bool bActive)
@@ -1819,6 +1861,62 @@ void AFestivalStreetBuilder::SetSacredPathUnlocked(bool bUnlocked)
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("AFestivalStreetBuilder: Sacred Path gate unlocked state set to %s"), bUnlocked ? TEXT("TRUE (PASSABLE)") : TEXT("FALSE (SEALED)"));
+}
+
+void AFestivalStreetBuilder::HandleCourtyardBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || !OtherActor->IsA(APawn::StaticClass()))
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			// Only update to Courtyard if coming from street to avoid reverting during Sacred Path traversal
+			if (Subsystem->GetActiveRegion() == EWorldRegion::FestivalStreet)
+			{
+				Subsystem->SetActiveRegion(EWorldRegion::CourtyardSanctuary);
+			}
+		}
+	}
+}
+
+void AFestivalStreetBuilder::HandleSacredPathBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || !OtherActor->IsA(APawn::StaticClass()))
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->SetActiveRegion(EWorldRegion::SacredPathAscent);
+		}
+	}
+}
+
+void AFestivalStreetBuilder::HandleMountainThresholdBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || !OtherActor->IsA(APawn::StaticClass()))
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->SetActiveRegion(EWorldRegion::MountainThreshold);
+			if (!Subsystem->IsMountainThresholdReached())
+			{
+				Subsystem->SetMountainThresholdReached(true);
+			}
+		}
+	}
 }
 
 void AFestivalStreetBuilder::PopulateWorldActors()

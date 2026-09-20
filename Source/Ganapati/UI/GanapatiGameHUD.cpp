@@ -97,6 +97,35 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 	// Dark semi-transparent background
 	DrawTintedBox(BannerX, BannerY, BannerW, BannerH, FLinearColor(0.02f, 0.02f, 0.04f, 0.78f));
 
+	// ── Phase 6C: World Region Discovery Badge ──
+	if (FestGM)
+	{
+		const EWorldRegion Region = FestGM->GetActiveRegion();
+		FString RegionName;
+		switch (Region)
+		{
+		case EWorldRegion::FestivalStreet:
+			RegionName = TEXT("REGION: FESTIVAL CITY BAZAAR");
+			break;
+		case EWorldRegion::CourtyardSanctuary:
+			RegionName = TEXT("REGION: COURTYARD SANCTUARY");
+			break;
+		case EWorldRegion::SacredPathAscent:
+			RegionName = TEXT("REGION: SACRED PATH ASCENT");
+			break;
+		case EWorldRegion::MountainThreshold:
+			RegionName = TEXT("REGION: THRESHOLD OF MOUNT KAILASH");
+			break;
+		default:
+			break;
+		}
+
+		if (!RegionName.IsEmpty())
+		{
+			DrawText(FString::Printf(TEXT("✦ %s ✦"), *RegionName), FLinearColor(1.0f, 0.85f, 0.45f, 0.85f), BannerX + 15.0f, BannerY - 18.0f, nullptr, 0.85f);
+		}
+	}
+
 	if (FestGM && FestGM->GetStoryProgressionState() == EStoryProgressionState::SacredJourney)
 	{
 		// Sacred Journey Objective Banner (Phase 5D Subsystem 1)
@@ -290,14 +319,19 @@ void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiP
 	// ── 3. Anti-Gravity Indicator ──
 	UGanapatiMovementComponent* MovComp = PlayerChar->GetGanapatiMovementComponent();
 	const bool bAntiGrav = MovComp && MovComp->IsAntiGravityActive();
+	AGanapatiFestivalGameMode* FestGM = Cast<AGanapatiFestivalGameMode>(GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr);
+	const bool bAscension = FestGM && FestGM->IsDivineAscensionDiscovered();
 
 	if (bAntiGrav)
 	{
-		DrawText(TEXT("✦ DIVINE LEVITATION: ACTIVE [G] ✦"), AccentCyan, BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.90f);
+		const FString ActiveText = bAscension ? TEXT("✦ DIVINE ASCENSION: ACTIVE [G] ✦") : TEXT("✦ DIVINE LEVITATION: ACTIVE [G] ✦");
+		DrawText(ActiveText, AccentCyan, BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.90f);
 	}
 	else
 	{
-		DrawText(TEXT("Levitation: Standby (Press [G])"), FLinearColor(0.6f, 0.6f, 0.65f, 0.8f), BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.85f);
+		const FString StandbyText = bAscension ? TEXT("✦ Divine Ascension Standby [G] ✦") : TEXT("Levitation: Standby (Press [G])");
+		const FLinearColor StandbyColor = bAscension ? FLinearColor(0.85f, 0.85f, 0.95f, 0.9f) : FLinearColor(0.6f, 0.6f, 0.65f, 0.8f);
+		DrawText(StandbyText, StandbyColor, BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.85f);
 	}
 
 	// ── 4. Modak / Offering Hint ──
