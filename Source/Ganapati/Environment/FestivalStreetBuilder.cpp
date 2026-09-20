@@ -5,6 +5,7 @@
 #include "NPCs/GanapatiNPC.h"
 #include "Enemies/GanapatiTrainingDummy.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SphereComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
@@ -732,6 +733,12 @@ void AFestivalStreetBuilder::BuildBazaarStalls()
 		// Wooden support poles
 		CreateMeshPiece(FString::Printf(TEXT("Stall_Sweets_%d_Pole1"), i), CylinderMesh, FVector(X - 120.0f, -500.0f, 120.0f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 2.4f), false);
 		CreateMeshPiece(FString::Printf(TEXT("Stall_Sweets_%d_Pole2"), i), CylinderMesh, FVector(X + 120.0f, -500.0f, 120.0f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 2.4f), false);
+
+		// Phase 5A Subsystem 1: Decorate the primary stall (X = -450) with the Sacred Modak Prasadam Thali
+		if (i == 0)
+		{
+			BuildModakPrasadamTray(FVector(X, -580.0f, 0.0f));
+		}
 	}
 
 	// --- 2. Flower & Garland Bazaar Zone (South Side, X = -450 and X = -150) ---
@@ -777,6 +784,222 @@ void AFestivalStreetBuilder::BuildBazaarStalls()
 	// South Diya Stand
 	CreateMeshPiece(TEXT("Stall_Diya_S_Table"), CubeMesh, FVector(250.0f, 580.0f, 45.0f), FRotator::ZeroRotator, FVector(2.6f, 1.4f, 0.9f));
 	CreateMeshPiece(TEXT("Stall_Diya_S_Canopy"), CubeMesh, FVector(250.0f, 580.0f, 235.0f), FRotator(-10.0f, 0.0f, 0.0f), FVector(3.0f, 1.8f, 0.12f));
+}
+
+void AFestivalStreetBuilder::BuildModakPrasadamTray(const FVector& StallCenter)
+{
+	// Center of the counter top: X = StallCenter.X, Y = StallCenter.Y + 30.0f (-550.0f), Z = 90.0f
+	const FVector CounterCenter = StallCenter + FVector(0.0f, 30.0f, 90.0f);
+
+	// ── 1. Sacred Brass Prasadam Thali (Platter) ──
+	CreateMeshPiece(
+		TEXT("Modak_BrassThali"),
+		CylinderMesh,
+		CounterCenter + FVector(0.0f, 0.0f, 2.0f),
+		FRotator::ZeroRotator,
+		FVector(1.4f, 1.4f, 0.04f),
+		true,
+		GoldMat
+	);
+
+	if (CircularBandMesh)
+	{
+		CreateMeshPiece(
+			TEXT("Modak_ThaliRim"),
+			CircularBandMesh,
+			CounterCenter + FVector(0.0f, 0.0f, 3.5f),
+			FRotator::ZeroRotator,
+			FVector(1.4f, 1.4f, 0.12f),
+			false,
+			GoldMat
+		);
+	}
+
+	// Fresh green banana-leaf lining on the thali
+	CreateMeshPiece(
+		TEXT("Modak_LeafLiner"),
+		CylinderMesh,
+		CounterCenter + FVector(0.0f, 0.0f, 3.0f),
+		FRotator::ZeroRotator,
+		FVector(1.2f, 1.2f, 0.02f),
+		false,
+		GreenMat
+	);
+
+	// ── 2. Steamed Ukadiche Modak Offering Mound ──
+	// Central Maha-Modak (King Modak)
+	CreateMeshPiece(
+		TEXT("Modak_Center_Base"),
+		CylinderMesh,
+		CounterCenter + FVector(0.0f, 0.0f, 10.0f),
+		FRotator::ZeroRotator,
+		FVector(0.4f, 0.4f, 0.16f),
+		false,
+		WhiteMat
+	);
+	if (ChamferCubeMesh)
+	{
+		CreateMeshPiece(
+			TEXT("Modak_Center_Spire"),
+			ChamferCubeMesh,
+			CounterCenter + FVector(0.0f, 0.0f, 22.0f),
+			FRotator(0.0f, 45.0f, 0.0f),
+			FVector(0.24f, 0.24f, 0.24f),
+			false,
+			WhiteMat
+		);
+	}
+	// Saffron Kesar Tilak dot on central modak apex
+	CreateMeshPiece(
+		TEXT("Modak_Center_Kesar"),
+		CylinderMesh,
+		CounterCenter + FVector(0.0f, 0.0f, 34.0f),
+		FRotator::ZeroRotator,
+		FVector(0.07f, 0.07f, 0.04f),
+		false,
+		MarigoldMat
+	);
+
+	// Ring of 8 freshly steamed Modaks encircling the center
+	const float RingRadius = 32.0f;
+	for (int32 m = 0; m < 8; ++m)
+	{
+		const float AngleDeg = m * 45.0f;
+		const float Rad = FMath::DegreesToRadians(AngleDeg);
+		const FVector Offset(RingRadius * FMath::Cos(Rad), RingRadius * FMath::Sin(Rad), 6.0f);
+
+		CreateMeshPiece(
+			FString::Printf(TEXT("Modak_Ring_%d_Base"), m),
+			CylinderMesh,
+			CounterCenter + Offset,
+			FRotator::ZeroRotator,
+			FVector(0.22f, 0.22f, 0.10f),
+			false,
+			WhiteMat
+		);
+
+		if (ChamferCubeMesh)
+		{
+			CreateMeshPiece(
+				FString::Printf(TEXT("Modak_Ring_%d_Tip"), m),
+				ChamferCubeMesh,
+				CounterCenter + Offset + FVector(0.0f, 0.0f, 8.0f),
+				FRotator(0.0f, AngleDeg + 22.5f, 0.0f),
+				FVector(0.14f, 0.14f, 0.14f),
+				false,
+				WhiteMat
+			);
+		}
+
+		CreateMeshPiece(
+			FString::Printf(TEXT("Modak_Ring_%d_Dot"), m),
+			CylinderMesh,
+			CounterCenter + Offset + FVector(0.0f, 0.0f, 15.0f),
+			FRotator::ZeroRotator,
+			FVector(0.04f, 0.04f, 0.03f),
+			false,
+			SindoorMat
+		);
+	}
+
+	// ── 3. Sweets Display Bowls on Rear Shelf ──
+	// Brass bowl of Motichoor Ladoos on the shelf
+	const FVector ShelfPos = StallCenter + FVector(-60.0f, -40.0f, 85.0f + 25.0f);
+	CreateMeshPiece(
+		TEXT("Modak_ShelfBowl1"),
+		CylinderMesh,
+		ShelfPos,
+		FRotator::ZeroRotator,
+		FVector(0.6f, 0.6f, 0.12f),
+		false,
+		GoldMat
+	);
+	CreateMeshPiece(
+		TEXT("Modak_ShelfLadoos1"),
+		CylinderMesh,
+		ShelfPos + FVector(0.0f, 0.0f, 8.0f),
+		FRotator::ZeroRotator,
+		FVector(0.5f, 0.5f, 0.10f),
+		false,
+		MarigoldMat
+	);
+
+	// Brass bowl of white sweets on the shelf
+	const FVector ShelfPos2 = StallCenter + FVector(60.0f, -40.0f, 85.0f + 25.0f);
+	CreateMeshPiece(
+		TEXT("Modak_ShelfBowl2"),
+		CylinderMesh,
+		ShelfPos2,
+		FRotator::ZeroRotator,
+		FVector(0.6f, 0.6f, 0.12f),
+		false,
+		GoldMat
+	);
+	CreateMeshPiece(
+		TEXT("Modak_ShelfSweets2"),
+		CylinderMesh,
+		ShelfPos2 + FVector(0.0f, 0.0f, 8.0f),
+		FRotator::ZeroRotator,
+		FVector(0.5f, 0.5f, 0.10f),
+		false,
+		WhiteMat
+	);
+
+	// ── 4. Aarti Brass Diya & Festive Illumination ──
+	const FVector DiyaPos = CounterCenter + FVector(-95.0f, 0.0f, 2.0f);
+	CreateMeshPiece(
+		TEXT("Modak_DiyaStand"),
+		CylinderMesh,
+		DiyaPos,
+		FRotator::ZeroRotator,
+		FVector(0.25f, 0.25f, 0.08f),
+		false,
+		GoldMat
+	);
+	if (ChamferCubeMesh)
+	{
+		CreateMeshPiece(
+			TEXT("Modak_DiyaFlame"),
+			ChamferCubeMesh,
+			DiyaPos + FVector(0.0f, 0.0f, 8.0f),
+			FRotator(0.0f, 45.0f, 0.0f),
+			FVector(0.08f, 0.08f, 0.14f),
+			false,
+			DiyaGlowMat
+		);
+	}
+
+	// Warm golden glow illuminating the prasadam stall
+	CreateFestivalLight(
+		TEXT("ModakStall_WarmLight"),
+		CounterCenter + FVector(0.0f, 20.0f, 60.0f),
+		FLinearColor(1.0f, 0.78f, 0.28f),
+		2800.0f,
+		450.0f
+	);
+
+	// ── 5. Decorative Marigold Garland along Counter Front ──
+	const float GarlandY = StallCenter.Y + 75.0f;
+	CreateMeshPiece(
+		TEXT("Modak_CounterGarland"),
+		CylinderMesh,
+		FVector(StallCenter.X, GarlandY, 80.0f),
+		FRotator(0.0f, 0.0f, 90.0f),
+		FVector(0.10f, 0.10f, 2.7f),
+		false,
+		MarigoldMat
+	);
+
+	// Decorative Canopy Festive Fringe
+	CreateMeshPiece(
+		TEXT("Modak_CanopyFringe"),
+		CubeMesh,
+		FVector(StallCenter.X, StallCenter.Y + 20.0f, 240.0f),
+		FRotator(12.0f, 0.0f, 0.0f),
+		FVector(3.25f, 0.12f, 0.25f),
+		false,
+		MarigoldMat
+	);
 }
 
 void AFestivalStreetBuilder::InitializeFestivalMaterials()
@@ -1457,9 +1680,9 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 
 	const FVector ActorOrigin = GetActorLocation();
 
-	// ── 1. Spawn Ganesh Pandal Shrine Interactable ──
-	// At the altar in front of the idol
-	FVector ShrineLocation = ActorOrigin + FVector(2300.0f, 0.0f, 90.0f);
+	// ── 1. Check Existing Interactables in Level ──
+	const FVector ShrineLocation = ActorOrigin + FVector(2300.0f, 0.0f, 90.0f);
+	const FVector ModakStallLocation = ActorOrigin + FVector(-450.0f, -540.0f, 90.0f);
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -1467,7 +1690,37 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 	TArray<AActor*> ExistingInteractables;
 	UGameplayStatics::GetAllActorsOfClass(World, AGanapatiInteractable::StaticClass(), ExistingInteractables);
 
-	if (ExistingInteractables.Num() == 0)
+	bool bHasShrine = false;
+	bool bHasModakStall = false;
+
+	for (AActor* Act : ExistingInteractables)
+	{
+		if (Act->ActorHasTag(TEXT("GrandShrine")))
+		{
+			bHasShrine = true;
+		}
+		else if (Act->ActorHasTag(TEXT("ModakStall")))
+		{
+			bHasModakStall = true;
+		}
+		else
+		{
+			// Distance fallback for existing untagged instances
+			if (FVector::Dist(Act->GetActorLocation(), ShrineLocation) < 400.0f)
+			{
+				bHasShrine = true;
+				Act->Tags.Add(FName(TEXT("GrandShrine")));
+			}
+			else if (FVector::Dist(Act->GetActorLocation(), ModakStallLocation) < 400.0f)
+			{
+				bHasModakStall = true;
+				Act->Tags.Add(FName(TEXT("ModakStall")));
+			}
+		}
+	}
+
+	// ── 2. Spawn Ganesh Pandal Shrine Interactable ──
+	if (!bHasShrine)
 	{
 		AGanapatiInteractable* Shrine = World->SpawnActor<AGanapatiInteractable>(
 			AGanapatiInteractable::StaticClass(),
@@ -1478,8 +1731,43 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 
 		if (Shrine)
 		{
+			Shrine->Tags.Add(FName(TEXT("GrandShrine")));
 			Shrine->SetPromptText(FText::FromString(TEXT("Press [E] to Offer Prayers & Modak to Lord Ganesha")));
 			Shrine->SetInteractionMessage(FText::FromString(TEXT("You offered modak and prayers with deep devotion. Lord Vighnaharta blesses your journey!")));
+			Shrine->SetRestoresHealth(true);
+			Shrine->SetDivineEnergyGranted(50.0f);
+		}
+	}
+
+	// ── 3. Spawn Modak Prasadam Stall Interactable (Phase 5A Subsystem 1) ──
+	if (!bHasModakStall)
+	{
+		AGanapatiInteractable* ModakStall = World->SpawnActor<AGanapatiInteractable>(
+			AGanapatiInteractable::StaticClass(),
+			ModakStallLocation,
+			FRotator::ZeroRotator,
+			SpawnParams
+		);
+
+		if (ModakStall)
+		{
+			ModakStall->Tags.Add(FName(TEXT("ModakStall")));
+			ModakStall->SetPromptText(FText::FromString(TEXT("Press [E] to Taste Sacred Modak Prasadam")));
+			ModakStall->SetInteractionMessage(FText::FromString(TEXT("Blessed with Sacred Modak Prasadam! +25 Divine Energy")));
+			ModakStall->SetRestoresHealth(false);
+			ModakStall->SetDivineEnergyGranted(25.0f);
+			ModakStall->SetSingleUse(false);
+
+			if (ModakStall->GetTriggerSphere())
+			{
+				ModakStall->GetTriggerSphere()->SetSphereRadius(180.0f);
+			}
+
+			if (ModakStall->GetInteractableMesh())
+			{
+				ModakStall->GetInteractableMesh()->SetVisibility(false);
+				ModakStall->GetInteractableMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			}
 		}
 	}
 

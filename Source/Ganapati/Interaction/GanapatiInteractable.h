@@ -65,6 +65,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Blessing")
 	void SetRestoresHealth(bool bInRestores) { bRestoresHealth = bInRestores; }
 
+	/** Static mesh component representing the interactable */
+	FORCEINLINE UStaticMeshComponent* GetInteractableMesh() const { return InteractableMesh; }
+
+	/** Sets whether this interactable is single-use */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction")
+	void SetSingleUse(bool bInSingleUse) { bSingleUse = bInSingleUse; }
+
+	/** Returns true if this interactable is single-use */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction")
+	bool IsSingleUse() const { return bSingleUse; }
+
 	/** Broadcast when player interacts */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
 	FOnGanapatiInteractedSignature OnInteracted;
@@ -83,6 +94,10 @@ protected:
 	/** Blueprint hook for shrine blessing visual/audio reactions */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction|Blessing")
 	void BP_OnShrineBlessingGranted(AActor* Interactor, float EnergyGranted);
+
+	/** Blueprint hook when Modak Prasadam is received from a stall */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Interaction|Prasadam")
+	void BP_OnModakPrasadamReceived(AActor* Interactor, float EnergyGranted);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Components")

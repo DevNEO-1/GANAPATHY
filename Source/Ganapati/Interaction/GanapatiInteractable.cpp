@@ -62,6 +62,7 @@ void AGanapatiInteractable::TriggerInteraction(AActor* Interactor)
 
 		OnShrineBlessed.Broadcast(PlayerChar, DivineEnergyGranted);
 		BP_OnShrineBlessingGranted(PlayerChar, DivineEnergyGranted);
+		BP_OnModakPrasadamReceived(PlayerChar, DivineEnergyGranted);
 	}
 
 	OnInteracted.Broadcast(Interactor, InteractionMessage);

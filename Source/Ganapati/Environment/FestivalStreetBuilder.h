@@ -57,6 +57,9 @@ protected:
 	/** Builds bazaar stalls along the street */
 	void BuildBazaarStalls();
 
+	/** Builds the sacred Modak prasadam offering tray and stall decorations */
+	void BuildModakPrasadamTray(const FVector& StallCenter);
+
 	/** Builds the grand Ganesh Pandal temple pavilion */
 	void BuildGaneshPandal();
 
