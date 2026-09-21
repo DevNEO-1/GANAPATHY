@@ -16,6 +16,8 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "World/GanapatiWorldSubsystem.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AFestivalStreetBuilder::AFestivalStreetBuilder()
 {
@@ -1085,6 +1087,20 @@ void AFestivalStreetBuilder::InitializeFestivalMaterials()
 			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(1.0f, 0.70f, 0.12f));
 			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("EmissiveColor")), FLinearColor(1.0f, 0.70f, 0.12f) * 16.0f);
 		}
+
+		CyanRuneMat = UMaterialInstanceDynamic::Create(GlowMaterial, this, TEXT("Mat_CyanRune"));
+		if (CyanRuneMat)
+		{
+			CyanRuneMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.1f, 0.85f, 1.0f));
+			CyanRuneMat->SetVectorParameterValue(FName(TEXT("EmissiveColor")), FLinearColor(0.1f, 0.85f, 1.0f) * 18.0f);
+		}
+
+		MiasmaMat = UMaterialInstanceDynamic::Create(GlowMaterial, this, TEXT("Mat_MiasmaHazard"));
+		if (MiasmaMat)
+		{
+			MiasmaMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.45f, 0.05f, 0.65f));
+			MiasmaMat->SetVectorParameterValue(FName(TEXT("EmissiveColor")), FLinearColor(0.45f, 0.05f, 0.65f) * 12.0f);
+		}
 	}
 	else if (FlatColorMaterial)
 	{
@@ -1093,6 +1109,20 @@ void AFestivalStreetBuilder::InitializeFestivalMaterials()
 		{
 			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(1.0f, 0.85f, 0.25f));
 			DiyaGlowMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(1.0f, 0.85f, 0.25f));
+		}
+
+		CyanRuneMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_CyanRune"));
+		if (CyanRuneMat)
+		{
+			CyanRuneMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.1f, 0.85f, 1.0f));
+			CyanRuneMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(0.1f, 0.85f, 1.0f));
+		}
+
+		MiasmaMat = UMaterialInstanceDynamic::Create(FlatColorMaterial, this, TEXT("Mat_MiasmaHazard"));
+		if (MiasmaMat)
+		{
+			MiasmaMat->SetVectorParameterValue(FName(TEXT("Color")), FLinearColor(0.45f, 0.05f, 0.65f));
+			MiasmaMat->SetVectorParameterValue(FName(TEXT("BaseColor")), FLinearColor(0.45f, 0.05f, 0.65f));
 		}
 	}
 }
@@ -1824,6 +1854,173 @@ void AFestivalStreetBuilder::BuildSacredPath(const FVector& CourtCenter)
 		MountainThresholdTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 		MountainThresholdTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleMountainThresholdBeginOverlap);
 	}
+
+	// ── Phase 6D: Build Sacred Mountain Region from Threshold Dais ──
+	BuildSacredMountainRegion(CourtCenter + FVector(0.0f, 2150.0f, 15.0f));
+}
+
+void AFestivalStreetBuilder::BuildSacredMountainRegion(const FVector& ThresholdOrigin)
+{
+	FloatingPlatformMeshes.Empty();
+
+	// ── 1. Tier 1: Mountain Base & Lower Ascent Crags (Y = 4300 to 5000, Z = 50 to 350) ──
+	// Crag steps carved into the mountain rock
+	CreateMeshPiece(TEXT("Crag_Step_1"), CubeMesh, ThresholdOrigin + FVector(0.0f, 250.0f, 45.0f), FRotator::ZeroRotator, FVector(7.0f, 4.0f, 1.2f), true, GrayMaterial);
+	CreateMeshPiece(TEXT("Crag_Step_2"), CubeMesh, ThresholdOrigin + FVector(0.0f, 500.0f, 145.0f), FRotator::ZeroRotator, FVector(6.5f, 4.0f, 1.5f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Crag_Step_3"), CubeMesh, ThresholdOrigin + FVector(0.0f, 750.0f, 265.0f), FRotator::ZeroRotator, FVector(6.0f, 3.5f, 1.8f), true, GrayMaterial);
+
+	// Flanking canyon cliff walls
+	CreateMeshPiece(TEXT("Mountain_Cliff_L"), CubeMesh, ThresholdOrigin + FVector(-450.0f, 500.0f, 285.0f), FRotator::ZeroRotator, FVector(2.0f, 10.0f, 6.0f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Mountain_Cliff_R"), CubeMesh, ThresholdOrigin + FVector(450.0f, 500.0f, 285.0f), FRotator::ZeroRotator, FVector(2.0f, 10.0f, 6.0f), true, DarkMaterial);
+
+	// Toran marker posts at beginning of ascent
+	CreateMeshPiece(TEXT("Mountain_Toran_L"), CubeMesh, ThresholdOrigin + FVector(-250.0f, 150.0f, 105.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
+	CreateMeshPiece(TEXT("Mountain_Toran_R"), CubeMesh, ThresholdOrigin + FVector(250.0f, 150.0f, 105.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
+
+	// Sacred Mountain Ascent discovery trigger
+	MountainAscentTriggerComp = NewObject<UBoxComponent>(this, TEXT("MountainAscentTriggerComp"));
+	if (MountainAscentTriggerComp)
+	{
+		MountainAscentTriggerComp->RegisterComponent();
+		MountainAscentTriggerComp->AttachToComponent(RootScene, FAttachmentTransformRules::KeepRelativeTransform);
+		MountainAscentTriggerComp->SetRelativeLocation(ThresholdOrigin + FVector(0.0f, 350.0f, 135.0f));
+		MountainAscentTriggerComp->SetBoxExtent(FVector(400.0f, 300.0f, 250.0f));
+		MountainAscentTriggerComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		MountainAscentTriggerComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+		MountainAscentTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		MountainAscentTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleMountainAscentBeginOverlap);
+	}
+
+	// Corrupted Miasma Hazard (Tier 1 midpoint obstacle)
+	const FVector MiasmaPos = ThresholdOrigin + FVector(0.0f, 550.0f, 165.0f);
+	CreateMeshPiece(TEXT("Miasma_Pool"), CubeMesh, MiasmaPos, FRotator::ZeroRotator, FVector(3.5f, 2.5f, 0.15f), false, MiasmaMat ? MiasmaMat : DarkMaterial);
+	CreateMeshPiece(TEXT("Miasma_CoreSpire"), CylinderMesh, MiasmaPos + FVector(0.0f, 0.0f, 30.0f), FRotator::ZeroRotator, FVector(0.5f, 0.5f, 0.8f), false, MiasmaMat ? MiasmaMat : DarkMaterial);
+	CreateFestivalLight(TEXT("Miasma_Light"), MiasmaPos + FVector(0.0f, 0.0f, 60.0f), FLinearColor(0.5f, 0.05f, 0.7f), 4500.0f, 600.0f);
+
+	MiasmaHazardTriggerComp = NewObject<UBoxComponent>(this, TEXT("MiasmaHazardTriggerComp"));
+	if (MiasmaHazardTriggerComp)
+	{
+		MiasmaHazardTriggerComp->RegisterComponent();
+		MiasmaHazardTriggerComp->AttachToComponent(RootScene, FAttachmentTransformRules::KeepRelativeTransform);
+		MiasmaHazardTriggerComp->SetRelativeLocation(MiasmaPos + FVector(0.0f, 0.0f, 35.0f));
+		MiasmaHazardTriggerComp->SetBoxExtent(FVector(200.0f, 150.0f, 80.0f));
+		MiasmaHazardTriggerComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		MiasmaHazardTriggerComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+		MiasmaHazardTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		MiasmaHazardTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleMiasmaHazardBeginOverlap);
+	}
+
+	// ── 2. Tier 2 & 3: Floating Anti-Gravity Traversal Platforms (6 Platforms) ──
+	struct FFloatingPlatformSpec
+	{
+		FVector RelativeOffset;
+		FVector Scale;
+	};
+
+	const FFloatingPlatformSpec PlatformSpecs[] = {
+		{ FVector(   0.0f, 1000.0f,  435.0f), FVector(2.8f, 2.8f, 0.6f) }, // FP 1 (800, 5150, 450)
+		{ FVector(-150.0f, 1250.0f,  605.0f), FVector(2.6f, 2.6f, 0.6f) }, // FP 2 (650, 5400, 620)
+		{ FVector( 150.0f, 1500.0f,  765.0f), FVector(2.6f, 2.6f, 0.6f) }, // FP 3 (950, 5650, 780)
+		{ FVector(   0.0f, 1800.0f,  935.0f), FVector(2.8f, 2.8f, 0.6f) }, // FP 4 (800, 5950, 950)
+		{ FVector(-120.0f, 2050.0f, 1105.0f), FVector(2.6f, 2.6f, 0.6f) }, // FP 5 (680, 6200, 1120)
+		{ FVector(   0.0f, 2300.0f, 1265.0f), FVector(3.0f, 3.0f, 0.6f) }  // FP 6 (800, 6450, 1280)
+	};
+
+	for (int32 i = 0; i < UE_ARRAY_COUNT(PlatformSpecs); ++i)
+	{
+		const FVector PlatLoc = ThresholdOrigin + PlatformSpecs[i].RelativeOffset;
+		const FVector PlatScale = PlatformSpecs[i].Scale;
+
+		// Solid floating rock base
+		UStaticMeshComponent* BaseComp = CreateMeshPiece(
+			FString::Printf(TEXT("FP_Base_%d"), i + 1),
+			CubeMesh,
+			PlatLoc,
+			FRotator::ZeroRotator,
+			PlatScale,
+			true,
+			GrayMaterial
+		);
+		if (BaseComp)
+		{
+			FloatingPlatformMeshes.Add(BaseComp);
+		}
+
+		// Cyan glowing runic cylinder on top of platform
+		CreateMeshPiece(
+			FString::Printf(TEXT("FP_RuneCore_%d"), i + 1),
+			CylinderMesh,
+			PlatLoc + FVector(0.0f, 0.0f, 35.0f),
+			FRotator::ZeroRotator,
+			FVector(PlatScale.X * 0.45f, PlatScale.Y * 0.45f, 0.2f),
+			false,
+			CyanRuneMat ? CyanRuneMat : GlowMaterial
+		);
+
+		// Ambient cyan light beneath and around the platform
+		CreateFestivalLight(
+			FString::Printf(TEXT("FP_Light_%d"), i + 1),
+			PlatLoc + FVector(0.0f, 0.0f, 70.0f),
+			FLinearColor(0.1f, 0.85f, 1.0f),
+			3500.0f,
+			700.0f
+		);
+	}
+
+	// ── 3. Chasm Fall Recovery Boundary (abyss safety catch below floating platforms) ──
+	ChasmRecoveryTriggerComp = NewObject<UBoxComponent>(this, TEXT("ChasmRecoveryTriggerComp"));
+	if (ChasmRecoveryTriggerComp)
+	{
+		ChasmRecoveryTriggerComp->RegisterComponent();
+		ChasmRecoveryTriggerComp->AttachToComponent(RootScene, FAttachmentTransformRules::KeepRelativeTransform);
+		ChasmRecoveryTriggerComp->SetRelativeLocation(ThresholdOrigin + FVector(0.0f, 1650.0f, -115.0f));
+		ChasmRecoveryTriggerComp->SetBoxExtent(FVector(1200.0f, 1200.0f, 150.0f));
+		ChasmRecoveryTriggerComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		ChasmRecoveryTriggerComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+		ChasmRecoveryTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		ChasmRecoveryTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleChasmRecoveryBeginOverlap);
+	}
+
+	// ── 4. Tier 4: Kailash Summit Sanctuary & Shrine Pavilion (Y = 6800, Z = 1350) ──
+	const FVector SummitCenter = ThresholdOrigin + FVector(0.0f, 2650.0f, 1335.0f);
+
+	// Grand marble summit terrace floor
+	CreateMeshPiece(TEXT("Summit_Terrace_Floor"), CubeMesh, SummitCenter + FVector(0.0f, 0.0f, -10.0f), FRotator::ZeroRotator, FVector(10.0f, 10.0f, 0.5f), true, WhiteMat ? WhiteMat : GrayMaterial);
+
+	// Surrounding protective terrace balustrades
+	CreateMeshPiece(TEXT("Summit_Balustrade_N"), CubeMesh, SummitCenter + FVector(0.0f, 450.0f, 40.0f), FRotator::ZeroRotator, FVector(10.0f, 0.5f, 1.0f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Summit_Balustrade_W"), CubeMesh, SummitCenter + FVector(-450.0f, 0.0f, 40.0f), FRotator::ZeroRotator, FVector(0.5f, 10.0f, 1.0f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Summit_Balustrade_E"), CubeMesh, SummitCenter + FVector(450.0f, 0.0f, 40.0f), FRotator::ZeroRotator, FVector(0.5f, 10.0f, 1.0f), true, DarkMaterial);
+
+	// 4 Golden Toran Pavilion Pillars
+	CreateMeshPiece(TEXT("Summit_Pillar_NW"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, SummitCenter + FVector(-300.0f, -300.0f, 165.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 3.5f), true, GoldMat);
+	CreateMeshPiece(TEXT("Summit_Pillar_NE"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, SummitCenter + FVector( 300.0f, -300.0f, 165.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 3.5f), true, GoldMat);
+	CreateMeshPiece(TEXT("Summit_Pillar_SW"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, SummitCenter + FVector(-300.0f,  300.0f, 165.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 3.5f), true, GoldMat);
+	CreateMeshPiece(TEXT("Summit_Pillar_SE"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, SummitCenter + FVector( 300.0f,  300.0f, 165.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 3.5f), true, GoldMat);
+
+	// Elevated canopy roof
+	CreateMeshPiece(TEXT("Summit_Canopy"), CubeMesh, SummitCenter + FVector(0.0f, 0.0f, 340.0f), FRotator::ZeroRotator, FVector(8.0f, 8.0f, 0.4f), true, GoldMat);
+
+	// Golden Kalash Spire
+	CreateMeshPiece(TEXT("Summit_Kalash_Spire"), CylinderMesh, SummitCenter + FVector(0.0f, 0.0f, 380.0f), FRotator::ZeroRotator, FVector(1.2f, 1.2f, 1.5f), false, GoldMat);
+
+	// Radiant divine illumination at summit
+	CreateFestivalLight(TEXT("Summit_Divine_Light"), SummitCenter + FVector(0.0f, 0.0f, 250.0f), FLinearColor(1.0f, 0.85f, 0.35f), 9000.0f, 2000.0f);
+	CreateFestivalLight(TEXT("Summit_Accent_Light"), SummitCenter + FVector(0.0f, 0.0f, 100.0f), FLinearColor(0.15f, 0.85f, 1.0f), 5000.0f, 1000.0f);
+
+	// Kailash Summit Region Trigger
+	KailashSummitTriggerComp = NewObject<UBoxComponent>(this, TEXT("KailashSummitTriggerComp"));
+	if (KailashSummitTriggerComp)
+	{
+		KailashSummitTriggerComp->RegisterComponent();
+		KailashSummitTriggerComp->AttachToComponent(RootScene, FAttachmentTransformRules::KeepRelativeTransform);
+		KailashSummitTriggerComp->SetRelativeLocation(SummitCenter + FVector(0.0f, 0.0f, 100.0f));
+		KailashSummitTriggerComp->SetBoxExtent(FVector(500.0f, 500.0f, 200.0f));
+		KailashSummitTriggerComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		KailashSummitTriggerComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+		KailashSummitTriggerComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		KailashSummitTriggerComp->OnComponentBeginOverlap.AddDynamic(this, &AFestivalStreetBuilder::HandleKailashSummitBeginOverlap);
+	}
 }
 
 void AFestivalStreetBuilder::SetBossBarrierActive(bool bActive)
@@ -1917,6 +2114,76 @@ void AFestivalStreetBuilder::HandleMountainThresholdBeginOverlap(UPrimitiveCompo
 			}
 		}
 	}
+}
+
+void AFestivalStreetBuilder::HandleMountainAscentBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || !OtherActor->IsA(APawn::StaticClass()))
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->SetActiveRegion(EWorldRegion::SacredMountainAscent);
+			if (!Subsystem->IsSacredMountainDiscovered())
+			{
+				Subsystem->SetSacredMountainDiscovered(true);
+			}
+		}
+	}
+}
+
+void AFestivalStreetBuilder::HandleKailashSummitBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || !OtherActor->IsA(APawn::StaticClass()))
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+		{
+			Subsystem->SetActiveRegion(EWorldRegion::KailashSummitShrine);
+		}
+	}
+}
+
+void AFestivalStreetBuilder::HandleMiasmaHazardBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || !OtherActor->IsA(APawn::StaticClass()))
+	{
+		return;
+	}
+
+	UGameplayStatics::ApplyDamage(OtherActor, 15.0f, nullptr, this, nullptr);
+	UE_LOG(LogTemp, Warning, TEXT("AFestivalStreetBuilder: Pawn entered Miasma Hazard! Applied 15 damage."));
+}
+
+void AFestivalStreetBuilder::HandleChasmRecoveryBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || !OtherActor->IsA(APawn::StaticClass()))
+	{
+		return;
+	}
+
+	// Safe teleport back to Tier 1 checkpoint ledge
+	OtherActor->SetActorLocation(ChasmRecoveryCheckpoint, false, nullptr, ETeleportType::TeleportPhysics);
+
+	if (ACharacter* Char = Cast<ACharacter>(OtherActor))
+	{
+		if (Char->GetCharacterMovement())
+		{
+			Char->GetCharacterMovement()->StopMovementImmediately();
+		}
+	}
+
+	// Minor fall recovery damage
+	UGameplayStatics::ApplyDamage(OtherActor, 10.0f, nullptr, this, nullptr);
+	UE_LOG(LogTemp, Warning, TEXT("AFestivalStreetBuilder: Pawn recovered from chasm fall! Teleported to checkpoint (%s) and applied 10 damage."), *ChasmRecoveryCheckpoint.ToString());
 }
 
 void AFestivalStreetBuilder::PopulateWorldActors()
@@ -2080,6 +2347,50 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 		FRotator(0.0f, 180.0f, 0.0f),
 		SpawnParams
 	);
+
+	// ── 2E. Spawn Kailash Summit Shrine Interactable (Phase 6D) ──
+	const FVector MountainShrineLocation = ActorOrigin + FVector(800.0f, 6800.0f, 1420.0f);
+	bool bHasMountainShrine = false;
+	for (AActor* Act : ExistingInteractables)
+	{
+		if (Act->ActorHasTag(TEXT("MountainShrine")) || FVector::Dist(Act->GetActorLocation(), MountainShrineLocation) < 400.0f)
+		{
+			bHasMountainShrine = true;
+			Act->Tags.AddUnique(FName(TEXT("MountainShrine")));
+			if (AGanapatiInteractable* ShrineAct = Cast<AGanapatiInteractable>(Act))
+			{
+				MountainShrineActor = ShrineAct;
+				ShrineAct->SetTriggersPrayerSequence(false);
+			}
+			break;
+		}
+	}
+
+	if (!bHasMountainShrine)
+	{
+		MountainShrineActor = World->SpawnActor<AGanapatiInteractable>(
+			AGanapatiInteractable::StaticClass(),
+			MountainShrineLocation,
+			FRotator::ZeroRotator,
+			SpawnParams
+		);
+
+		if (MountainShrineActor)
+		{
+			MountainShrineActor->Tags.Add(FName(TEXT("MountainShrine")));
+			MountainShrineActor->SetPromptText(FText::FromString(TEXT("Press [E] to Commune with the Kailash Summit Shrine")));
+			MountainShrineActor->SetInteractionMessage(FText::FromString(TEXT("The sacred light of Mount Kailash infuses you. Your spirit is ascended and divine powers perfected!")));
+			MountainShrineActor->SetRestoresHealth(true);
+			MountainShrineActor->SetDivineEnergyGranted(100.0f);
+			MountainShrineActor->SetSingleUse(false);
+			MountainShrineActor->SetTriggersPrayerSequence(false);
+
+			if (MountainShrineActor->GetTriggerSphere())
+			{
+				MountainShrineActor->GetTriggerSphere()->SetSphereRadius(240.0f);
+			}
+		}
+	}
 
 	// ── 3. Spawn Devotee NPCs along the Festival Street (Phase 5A Subsystem 3) ──
 	struct FNPCRoleSpec

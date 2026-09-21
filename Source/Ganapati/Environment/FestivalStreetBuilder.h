@@ -104,6 +104,9 @@ protected:
 	/** Builds the eastern Sacred Path extending beyond the courtyard (Phase 5D Subsystem 1) */
 	void BuildSacredPath(const FVector& CourtCenter);
 
+	/** Builds the Sacred Mountain region and floating traversal platforms (Phase 6D) */
+	void BuildSacredMountainRegion(const FVector& ThresholdOrigin);
+
 	/** Spawns festival NPCs, shrine interactable, and training dummies */
 	void PopulateWorldActors();
 
@@ -186,6 +189,12 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> DiyaGlowMat;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> CyanRuneMat;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> MiasmaMat;
+
 	/** Temporary courtyard boss ward barrier component (Phase 5C Subsystem 3) */
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> BossBarrierComp;
@@ -212,6 +221,28 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UBoxComponent> MountainThresholdTriggerComp;
 
+	// ── Phase 6D: Sacred Mountain & Traversal Triggers & State ──
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> MountainAscentTriggerComp;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> KailashSummitTriggerComp;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> MiasmaHazardTriggerComp;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> ChasmRecoveryTriggerComp;
+
+	UPROPERTY(Transient)
+	TObjectPtr<AGanapatiInteractable> MountainShrineActor;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> FloatingPlatformMeshes;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Mountain")
+	FVector ChasmRecoveryCheckpoint = FVector(800.0f, 4950.0f, 360.0f);
+
 	UFUNCTION()
 	void HandleCourtyardBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
@@ -220,6 +251,18 @@ protected:
 
 	UFUNCTION()
 	void HandleMountainThresholdBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void HandleMountainAscentBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void HandleKailashSummitBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void HandleMiasmaHazardBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void HandleChasmRecoveryBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
 	bool bHasConstructed = false;

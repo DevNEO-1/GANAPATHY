@@ -194,6 +194,14 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|World")
 	bool IsMountainThresholdReached() const;
 
+	/** Returns true if player has discovered the Sacred Mountain region (Phase 6D) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|World")
+	bool IsSacredMountainDiscovered() const;
+
+	/** Returns true if player has activated the Kailash Summit Shrine (Phase 6D) */
+	UFUNCTION(BlueprintPure, Category="Ganapati|World")
+	bool IsMountainShrineActivated() const;
+
 	/** Blueprint implementable event fired when Divine Ascension is discovered (Phase 6C) */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|World", meta=(DisplayName="On Divine Ascension Discovered"))
 	void BP_OnDivineAscensionDiscovered();
@@ -201,6 +209,14 @@ public:
 	/** Blueprint implementable event fired when the Mountain Threshold is reached (Phase 6C) */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|World", meta=(DisplayName="On Mountain Threshold Reached"))
 	void BP_OnMountainThresholdReached();
+
+	/** Blueprint implementable event fired when the Sacred Mountain is discovered (Phase 6D) */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|World", meta=(DisplayName="On Sacred Mountain Discovered"))
+	void BP_OnSacredMountainDiscovered();
+
+	/** Blueprint implementable event fired when the Kailash Summit Shrine is activated (Phase 6D) */
+	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|World", meta=(DisplayName="On Mountain Shrine Activated"))
+	void BP_OnMountainShrineActivated();
 
 public:
 	/** Broadcast when a quest step advances */
@@ -300,6 +316,13 @@ protected:
 
 	UFUNCTION()
 	void HandlePilgrimageMilestoneReached(bool bReached);
+
+	// ── Phase 6D: Subsystem Mountain & Shrine Handlers ──
+	UFUNCTION()
+	void HandleSacredMountainDiscovered(bool bDiscovered);
+
+	UFUNCTION()
+	void HandleMountainShrineActivated(bool bActivated);
 
 	/** Blueprint hook when quest step advances */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|Quest")

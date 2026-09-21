@@ -116,6 +116,12 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 		case EWorldRegion::MountainThreshold:
 			RegionName = TEXT("REGION: THRESHOLD OF MOUNT KAILASH");
 			break;
+		case EWorldRegion::SacredMountainAscent:
+			RegionName = TEXT("REGION: SACRED MOUNTAIN ASCENT");
+			break;
+		case EWorldRegion::KailashSummitShrine:
+			RegionName = TEXT("REGION: KAILASH SUMMIT SHRINE");
+			break;
 		default:
 			break;
 		}

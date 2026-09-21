@@ -473,3 +473,35 @@ void UGanapatiWorldSubsystem::SetMountainThresholdReached(bool bReached)
 	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Mountain Threshold reached state set to %s"),
 		bReached ? TEXT("TRUE") : TEXT("FALSE"));
 }
+
+void UGanapatiWorldSubsystem::SetSacredMountainDiscovered(bool bDiscovered)
+{
+	if (WorldState.bSacredMountainDiscovered == bDiscovered)
+	{
+		return;
+	}
+
+	WorldState.bSacredMountainDiscovered = bDiscovered;
+
+	OnSacredMountainDiscovered.Broadcast(bDiscovered);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Sacred Mountain discovered state set to %s"),
+		bDiscovered ? TEXT("TRUE") : TEXT("FALSE"));
+}
+
+void UGanapatiWorldSubsystem::SetMountainShrineActivated(bool bActivated)
+{
+	if (WorldState.bMountainShrineActivated == bActivated)
+	{
+		return;
+	}
+
+	WorldState.bMountainShrineActivated = bActivated;
+
+	OnMountainShrineActivated.Broadcast(bActivated);
+	OnWorldStateChanged.Broadcast(WorldState);
+
+	UE_LOG(LogTemp, Log, TEXT("UGanapatiWorldSubsystem: Mountain Shrine activated state set to %s"),
+		bActivated ? TEXT("TRUE") : TEXT("FALSE"));
+}

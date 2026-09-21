@@ -41,12 +41,16 @@ enum class EWorldRegion : uint8
 	FestivalStreet     UMETA(DisplayName="Festival Street"),
 	CourtyardSanctuary UMETA(DisplayName="Courtyard Sanctuary"),
 	SacredPathAscent   UMETA(DisplayName="Sacred Path Ascent"),
-	MountainThreshold  UMETA(DisplayName="Mountain Threshold")
+	MountainThreshold  UMETA(DisplayName="Mountain Threshold"),
+	SacredMountainAscent UMETA(DisplayName="Sacred Mountain Ascent"),
+	KailashSummitShrine  UMETA(DisplayName="Kailash Summit Shrine")
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWorldRegionChangedSignature, EWorldRegion, PreviousRegion, EWorldRegion, NewRegion);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDivineAscensionDiscoveredSignature, bool, bDiscovered);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPilgrimageMilestoneReachedSignature, bool, bReached);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSacredMountainDiscoveredSignature, bool, bDiscovered);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMountainShrineActivatedSignature, bool, bActivated);
 
 /**
  * Progression states for the overarching festival narrative.
@@ -91,6 +95,12 @@ struct FGanapatiWorldState
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
 	bool bMountainThresholdReached = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	bool bSacredMountainDiscovered = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|WorldState")
+	bool bMountainShrineActivated = false;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWorldStateChangedSignature, const FGanapatiWorldState&, NewWorldState);
@@ -232,6 +242,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
 	void SetMountainThresholdReached(bool bReached);
 
+	// ── Phase 6D: Sacred Mountain & Kailash Summit Milestone APIs ──
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	bool IsSacredMountainDiscovered() const { return WorldState.bSacredMountainDiscovered; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetSacredMountainDiscovered(bool bDiscovered);
+
+	UFUNCTION(BlueprintPure, Category="Ganapati|Subsystem|WorldState")
+	bool IsMountainShrineActivated() const { return WorldState.bMountainShrineActivated; }
+
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Subsystem|WorldState")
+	void SetMountainShrineActivated(bool bActivated);
+
 public:
 	// ── Broadcast Delegates ──
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
@@ -291,6 +314,12 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
 	FOnPilgrimageMilestoneReachedSignature OnPilgrimageMilestoneReached;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnSacredMountainDiscoveredSignature OnSacredMountainDiscovered;
+
+	UPROPERTY(BlueprintAssignable, Category="Ganapati|Subsystem|Events")
+	FOnMountainShrineActivatedSignature OnMountainShrineActivated;
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Subsystem|WorldState", meta=(AllowPrivateAccess="true"))

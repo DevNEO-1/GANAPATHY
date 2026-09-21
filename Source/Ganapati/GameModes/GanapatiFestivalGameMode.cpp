@@ -267,6 +267,14 @@ FString AGanapatiFestivalGameMode::GetCurrentObjectiveTitle() const
 {
 	if (CurrentStoryState == EStoryProgressionState::SacredJourney)
 	{
+		if (IsMountainShrineActivated())
+		{
+			return TEXT("✦ KAILASH COMMUNION ACHIEVED: Sacred Peak Blessed ✦");
+		}
+		if (IsSacredMountainDiscovered())
+		{
+			return TEXT("OBJECTIVE: Ascend Mount Kailash to the Summit Shrine");
+		}
 		if (IsMountainThresholdReached())
 		{
 			return TEXT("✦ PILGRIMAGE MILESTONE: Threshold of Mount Kailash Reached ✦");
@@ -299,9 +307,17 @@ FString AGanapatiFestivalGameMode::GetCurrentObjectiveDescription() const
 {
 	if (CurrentStoryState == EStoryProgressionState::SacredJourney)
 	{
+		if (IsMountainShrineActivated())
+		{
+			return TEXT("The divine radiance of Mount Kailash blesses you. Your spirit and strength are fully replenished!");
+		}
+		if (IsSacredMountainDiscovered())
+		{
+			return TEXT("Use Divine Anti-Gravity [G] across the floating platforms and avoid miasma hazards to reach the summit.");
+		}
 		if (IsMountainThresholdReached())
 		{
-			return TEXT("You stand at the sacred gateway to the divine peaks. The pilgrimage continues!");
+			return TEXT("You stand at the sacred gateway to the divine peaks. Ascend into the sacred mountain crags!");
 		}
 		if (IsDivineAscensionDiscovered())
 		{
@@ -394,6 +410,10 @@ void AGanapatiFestivalGameMode::BindQuestListeners()
 		Subsystem->OnDivineAscensionDiscovered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleDivineAscensionDiscovered);
 		Subsystem->OnPilgrimageMilestoneReached.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandlePilgrimageMilestoneReached);
 		Subsystem->OnPilgrimageMilestoneReached.AddDynamic(this, &AGanapatiFestivalGameMode::HandlePilgrimageMilestoneReached);
+		Subsystem->OnSacredMountainDiscovered.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleSacredMountainDiscovered);
+		Subsystem->OnSacredMountainDiscovered.AddDynamic(this, &AGanapatiFestivalGameMode::HandleSacredMountainDiscovered);
+		Subsystem->OnMountainShrineActivated.RemoveDynamic(this, &AGanapatiFestivalGameMode::HandleMountainShrineActivated);
+		Subsystem->OnMountainShrineActivated.AddDynamic(this, &AGanapatiFestivalGameMode::HandleMountainShrineActivated);
 
 		// 2. Process all actors already registered before GameMode initialized
 		for (AGanapatiNPC* NPC : Subsystem->GetRegisteredNPCs())
@@ -654,13 +674,30 @@ void AGanapatiFestivalGameMode::HandleNPCDialogueSpoken(AGanapatiNPC* NPC, AActo
 
 void AGanapatiFestivalGameMode::HandleInteractableInteracted(AActor* Interactor, const FText& Message)
 {
+	const FString MsgStr = Message.ToString();
+
+	// Phase 6D: Kailash Summit Shrine communion
+	if (MsgStr.Contains(TEXT("Kailash")) || MsgStr.Contains(TEXT("Mount Kailash")))
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UGanapatiWorldSubsystem* Subsystem = World->GetSubsystem<UGanapatiWorldSubsystem>())
+			{
+				if (!Subsystem->IsMountainShrineActivated())
+				{
+					Subsystem->SetMountainShrineActivated(true);
+				}
+			}
+		}
+		return;
+	}
+
 	if (CurrentQuestStep != ESacredDarshanStep::Step2_ReceiveModakPrasadam)
 	{
 		return;
 	}
 
 	// Modak Stall interaction broadcasts this with "Prasadam" or tag
-	const FString MsgStr = Message.ToString();
 	if (MsgStr.Contains(TEXT("Modak")) || MsgStr.Contains(TEXT("Prasadam")))
 	{
 		AdvanceQuestStep(
@@ -1183,6 +1220,24 @@ bool AGanapatiFestivalGameMode::IsMountainThresholdReached() const
 	return false;
 }
 
+bool AGanapatiFestivalGameMode::IsSacredMountainDiscovered() const
+{
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		return Subsystem->IsSacredMountainDiscovered();
+	}
+	return false;
+}
+
+bool AGanapatiFestivalGameMode::IsMountainShrineActivated() const
+{
+	if (UGanapatiWorldSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UGanapatiWorldSubsystem>() : nullptr)
+	{
+		return Subsystem->IsMountainShrineActivated();
+	}
+	return false;
+}
+
 void AGanapatiFestivalGameMode::HandleWorldRegionChanged(EWorldRegion PreviousRegion, EWorldRegion NewRegion)
 {
 	UE_LOG(LogTemp, Log, TEXT("AGanapatiFestivalGameMode: World Region transitioned from %d to %d"),
@@ -1222,5 +1277,51 @@ void AGanapatiFestivalGameMode::HandlePilgrimageMilestoneReached(bool bReached)
 
 		BP_OnMountainThresholdReached();
 		UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ PILGRIMAGE MILESTONE REACHED! Player reached the Mountain Threshold Dais. ✦"));
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleSacredMountainDiscovered(bool bDiscovered)
+{
+	if (bDiscovered)
+	{
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		if (PC)
+		{
+			if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+			{
+				HUD->ShowQuestToast(FText::FromString(TEXT("✦ SACRED MOUNTAIN REACHED: ASCEND TO THE KAILASH SUMMIT ✦")), 6.0f);
+			}
+		}
+
+		BP_OnSacredMountainDiscovered();
+		UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ SACRED MOUNTAIN DISCOVERED! Player commenced ascent to Mount Kailash. ✦"));
+	}
+}
+
+void AGanapatiFestivalGameMode::HandleMountainShrineActivated(bool bActivated)
+{
+	if (bActivated)
+	{
+		// Replenish player divine energy and health
+		if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
+		{
+			if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
+			{
+				PlayerChar->AddDivineEnergy(100.0f);
+				PlayerChar->ResetHealth();
+			}
+		}
+
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		if (PC)
+		{
+			if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+			{
+				HUD->ShowQuestToast(FText::FromString(TEXT("✦ KAILASH COMMUNION: Sacred Peak Blessed! Divine Grace Perfected! ✦")), 7.0f);
+			}
+		}
+
+		BP_OnMountainShrineActivated();
+		UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ KAILASH COMMUNION ACHIEVED! Player activated the Kailash Summit Shrine. ✦"));
 	}
 }
