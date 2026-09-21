@@ -2,6 +2,7 @@
 
 #include "Controllers/GanapatiMainPlayerController.h"
 #include "Characters/GanapatiPlayerCharacter.h"
+#include "GameModes/GanapatiFestivalGameMode.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputAction.h"
@@ -350,6 +351,15 @@ void AGanapatiMainPlayerController::HandleLook(const FInputActionValue& Value)
 
 void AGanapatiMainPlayerController::HandleJumpStarted()
 {
+	if (AGanapatiFestivalGameMode* FestGM = Cast<AGanapatiFestivalGameMode>(GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr))
+	{
+		if (FestGM->IsPlayingOpeningCinematic())
+		{
+			FestGM->SkipOpeningCinematic();
+			return;
+		}
+	}
+
 	if (AGanapatiPlayerCharacter* Char = GetGanapatiCharacter())
 	{
 		Char->DoJumpStart();

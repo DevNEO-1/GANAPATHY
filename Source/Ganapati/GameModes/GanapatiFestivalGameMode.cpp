@@ -202,6 +202,8 @@ void AGanapatiFestivalGameMode::PlayOpeningCinematic()
 		return;
 	}
 
+	bIsPlayingOpeningCinematic = true;
+
 	// High panoramic vantage point looking down the festival street towards the Ganesh Pandal
 	const FVector CamLoc(-1200.0f, -400.0f, 650.0f);
 	const FRotator CamRot(-16.0f, 25.0f, 0.0f);
@@ -249,6 +251,14 @@ void AGanapatiFestivalGameMode::TransitionToPlayerControl()
 	// Smoothly swoop from cinematic wide angle back into the third-person player camera
 	PC->SetViewTargetWithBlend(PlayerPawn, CinematicBlendDuration, VTBlend_EaseInOut, 2.0f);
 
+	bIsPlayingOpeningCinematic = false;
+
+	// Welcome celebratory toast on player control handover
+	if (AGanapatiGameHUD* HUD = Cast<AGanapatiGameHUD>(PC->GetHUD()))
+	{
+		HUD->ShowQuestToast(FText::FromString(TEXT("✦ PILGRIMAGE BEGUN: Seek the blessings of Halwai Anand ✦")), 4.0f);
+	}
+
 	// Advance initial story state to SacredDarshan when player control begins
 	if (CurrentStoryState == EStoryProgressionState::FestivalBeginning)
 	{
@@ -261,6 +271,17 @@ void AGanapatiFestivalGameMode::TransitionToPlayerControl()
 		OnStoryProgressionChanged.Broadcast(PrevState, CurrentStoryState);
 		BP_OnStoryProgressionChanged(PrevState, CurrentStoryState);
 	}
+}
+
+void AGanapatiFestivalGameMode::SkipOpeningCinematic()
+{
+	if (!bIsPlayingOpeningCinematic)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(CinematicTimerHandle);
+	TransitionToPlayerControl();
 }
 
 FString AGanapatiFestivalGameMode::GetCurrentObjectiveTitle() const
@@ -1302,14 +1323,31 @@ void AGanapatiFestivalGameMode::HandleMountainShrineActivated(bool bActivated)
 {
 	if (bActivated)
 	{
-		// Replenish player divine energy and health
+		bIsSummitFinaleActive = true;
+
+		// Replenish player divine energy and health to maximum
 		if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
 		{
 			if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
 			{
-				PlayerChar->AddDivineEnergy(100.0f);
+				PlayerChar->AddDivineEnergy(PlayerChar->GetMaxDivineEnergy());
 				PlayerChar->ResetHealth();
+
+				// Trigger celebratory camera pulse
+				if (APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController()))
+				{
+					if (PlayerChar->GetMeleeHitCameraShakeClass())
+					{
+						PC->ClientStartCameraShake(PlayerChar->GetMeleeHitCameraShakeClass(), 0.6f);
+					}
+				}
 			}
+		}
+
+		// Enhance summit divine lighting
+		if (CachedStreetBuilder.IsValid())
+		{
+			CachedStreetBuilder->EnhanceSummitCommunionLighting();
 		}
 
 		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
@@ -1320,6 +1358,18 @@ void AGanapatiFestivalGameMode::HandleMountainShrineActivated(bool bActivated)
 				HUD->ShowQuestToast(FText::FromString(TEXT("✦ KAILASH COMMUNION: Sacred Peak Blessed! Divine Grace Perfected! ✦")), 7.0f);
 			}
 		}
+
+		// Set a timer to smoothly resolve the finale active flag after 14 seconds
+		GetWorldTimerManager().ClearTimer(SummitFinaleTimerHandle);
+		GetWorldTimerManager().SetTimer(
+			SummitFinaleTimerHandle,
+			FTimerDelegate::CreateWeakLambda(this, [this]()
+			{
+				bIsSummitFinaleActive = false;
+			}),
+			14.0f,
+			false
+		);
 
 		BP_OnMountainShrineActivated();
 		UE_LOG(LogTemp, Warning, TEXT("AGanapatiFestivalGameMode: ✦ KAILASH COMMUNION ACHIEVED! Player activated the Kailash Summit Shrine. ✦"));

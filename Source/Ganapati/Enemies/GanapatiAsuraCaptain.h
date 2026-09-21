@@ -6,6 +6,8 @@
 #include "Enemies/GanapatiAsuraMinion.h"
 #include "GanapatiAsuraCaptain.generated.h"
 
+class UPointLightComponent;
+
 /**
  * Combat Attack Patterns for the Asura Captain.
  */
@@ -108,4 +110,8 @@ protected:
 
 	/** Cached initial spawn transform for clean reset */
 	FTransform InitialSpawnTransform;
+
+	/** Dynamic warning light component for attack telegraphing and enrage bursts */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Components")
+	TObjectPtr<UPointLightComponent> AttackTelegraphLightComp;
 };

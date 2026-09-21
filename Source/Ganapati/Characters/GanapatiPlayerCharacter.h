@@ -124,6 +124,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Camera|Shake")
 	void PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale = 1.0f);
 
+	/** Gets the heavy attack camera shake class */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Camera|Shake")
+	TSubclassOf<UCameraShakeBase> GetHeavyAttackCameraShakeClass() const { return HeavyAttackCameraShakeClass; }
+
+	/** Gets the melee hit camera shake class */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Camera|Shake")
+	TSubclassOf<UCameraShakeBase> GetMeleeHitCameraShakeClass() const { return MeleeHitCameraShakeClass; }
+
 	/** Applies a crisp hit-stop pause to the player character's mesh animation */
 	UFUNCTION(BlueprintCallable, Category="Ganapati|Combat|Feel")
 	void TriggerHitStop(float Duration);
@@ -329,7 +337,7 @@ protected:
 
 	/** Intensity scale for melee hit camera shake */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake", meta=(ClampMin=0.0f, ClampMax=2.0f))
-	float MeleeHitShakeScale = 0.45f;
+	float MeleeHitShakeScale = 0.55f;
 
 	/** Camera shake played on charged heavy attack release */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Camera|Shake")
@@ -358,7 +366,7 @@ protected:
 	// ── Phase 4A: Melee Hit-Stop ──
 	/** Duration in seconds to freeze the mesh animation pose on confirmed melee hit */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Combat|Feel", meta=(ClampMin=0.01f, ClampMax=0.2f, Units="s"))
-	float HitStopDuration = 0.05f;
+	float HitStopDuration = 0.065f;
 
 	// ── Phase 4A: Landing Feedback ──
 	/** Negative Z velocity threshold to trigger a hard landing */

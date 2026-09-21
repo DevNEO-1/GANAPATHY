@@ -1812,15 +1812,41 @@ void AFestivalStreetBuilder::BuildSacredPath(const FVector& CourtCenter)
 	CreateMeshPiece(TEXT("SacredPath_Pillar_L2"), CubeMesh, CourtCenter + FVector(-280.0f, 1800.0f, 120.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
 	CreateMeshPiece(TEXT("SacredPath_Pillar_R2"), CubeMesh, CourtCenter + FVector(280.0f, 1800.0f, 120.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
 
+	// Grand Toran Arch Lintels connecting the pillars across the path
+	CreateMeshPiece(TEXT("SacredPath_Arch_1"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, CourtCenter + FVector(0.0f, 1300.0f, 245.0f), FRotator::ZeroRotator, FVector(6.0f, 0.9f, 0.5f), true, GoldMat);
+	CreateMeshPiece(TEXT("SacredPath_Arch_2"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, CourtCenter + FVector(0.0f, 1800.0f, 245.0f), FRotator::ZeroRotator, FVector(6.0f, 0.9f, 0.5f), true, GoldMat);
+
+	// Hanging Marigold Garlands on Arches
+	CreateMeshPiece(TEXT("SacredPath_Garland_1"), CylinderMesh, CourtCenter + FVector(0.0f, 1300.0f, 215.0f), FRotator(0.0f, 0.0f, 90.0f), FVector(0.25f, 0.25f, 2.6f), false, MarigoldMat);
+	CreateMeshPiece(TEXT("SacredPath_Garland_2"), CylinderMesh, CourtCenter + FVector(0.0f, 1800.0f, 215.0f), FRotator(0.0f, 0.0f, 90.0f), FVector(0.25f, 0.25f, 2.6f), false, MarigoldMat);
+
+	// Flanking Ceremonial Diya Pedestals & Glowing Flames along the path edges
+	const float DiyaYOffsets[] = { 1050.0f, 1300.0f, 1550.0f, 1800.0f, 2050.0f };
+	for (int32 d = 0; d < UE_ARRAY_COUNT(DiyaYOffsets); ++d)
+	{
+		const float YPos = DiyaYOffsets[d];
+		// Left Diya Pedestal & Flame
+		CreateMeshPiece(FString::Printf(TEXT("Path_DiyaPed_L_%d"), d), CylinderMesh, CourtCenter + FVector(-260.0f, YPos, 15.0f), FRotator::ZeroRotator, FVector(0.4f, 0.4f, 0.5f), false, GrayMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Path_DiyaFlame_L_%d"), d), CylinderMesh, CourtCenter + FVector(-260.0f, YPos, 45.0f), FRotator::ZeroRotator, FVector(0.2f, 0.2f, 0.15f), false, DiyaGlowMat ? DiyaGlowMat : GlowMaterial);
+
+		// Right Diya Pedestal & Flame
+		CreateMeshPiece(FString::Printf(TEXT("Path_DiyaPed_R_%d"), d), CylinderMesh, CourtCenter + FVector(260.0f, YPos, 15.0f), FRotator::ZeroRotator, FVector(0.4f, 0.4f, 0.5f), false, GrayMaterial);
+		CreateMeshPiece(FString::Printf(TEXT("Path_DiyaFlame_R_%d"), d), CylinderMesh, CourtCenter + FVector(260.0f, YPos, 45.0f), FRotator::ZeroRotator, FVector(0.2f, 0.2f, 0.15f), false, DiyaGlowMat ? DiyaGlowMat : GlowMaterial);
+	}
+
 	// Sacred Mountain Threshold Dais at path terminus
 	CreateMeshPiece(TEXT("SacredPath_Dais"), CubeMesh, CourtCenter + FVector(0.0f, 2150.0f, 15.0f), FRotator::ZeroRotator, FVector(8.0f, 3.0f, 0.3f), true, GoldMat);
 
+	// Illuminated Anti-Gravity Launch Dais with celestial rune ring at Mountain Threshold
+	CreateMeshPiece(TEXT("Threshold_AscensionRing"), CircularBandMesh ? CircularBandMesh : CylinderMesh, CourtCenter + FVector(0.0f, 2150.0f, 35.0f), FRotator(90.0f, 0.0f, 0.0f), FVector(1.8f, 1.8f, 1.8f), false, CyanRuneMat ? CyanRuneMat : GlowMaterial);
+	CreateMeshPiece(TEXT("Threshold_BeaconBeam"), CylinderMesh, CourtCenter + FVector(0.0f, 2150.0f, 150.0f), FRotator::ZeroRotator, FVector(0.3f, 0.3f, 2.4f), false, CyanRuneMat ? CyanRuneMat : GlowMaterial);
+
 	// Ceremonial lanterns along Sacred Path
-	UPointLightComponent* L1 = CreateFestivalLight(TEXT("SacredPath_Light_L1"), CourtCenter + FVector(-260.0f, 1300.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
-	UPointLightComponent* L2 = CreateFestivalLight(TEXT("SacredPath_Light_R1"), CourtCenter + FVector(260.0f, 1300.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
-	UPointLightComponent* L3 = CreateFestivalLight(TEXT("SacredPath_Light_L2"), CourtCenter + FVector(-260.0f, 1800.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
-	UPointLightComponent* L4 = CreateFestivalLight(TEXT("SacredPath_Light_R2"), CourtCenter + FVector(260.0f, 1800.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 3500.0f, 900.0f);
-	UPointLightComponent* L5 = CreateFestivalLight(TEXT("SacredPath_Light_Dais"), CourtCenter + FVector(0.0f, 2150.0f, 280.0f), FLinearColor(1.0f, 0.85f, 0.35f), 6000.0f, 1400.0f);
+	UPointLightComponent* L1 = CreateFestivalLight(TEXT("SacredPath_Light_L1"), CourtCenter + FVector(-260.0f, 1300.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 4000.0f, 1000.0f);
+	UPointLightComponent* L2 = CreateFestivalLight(TEXT("SacredPath_Light_R1"), CourtCenter + FVector(260.0f, 1300.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 4000.0f, 1000.0f);
+	UPointLightComponent* L3 = CreateFestivalLight(TEXT("SacredPath_Light_L2"), CourtCenter + FVector(-260.0f, 1800.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 4000.0f, 1000.0f);
+	UPointLightComponent* L4 = CreateFestivalLight(TEXT("SacredPath_Light_R2"), CourtCenter + FVector(260.0f, 1800.0f, 260.0f), FLinearColor(1.0f, 0.75f, 0.2f), 4000.0f, 1000.0f);
+	UPointLightComponent* L5 = CreateFestivalLight(TEXT("SacredPath_Light_Dais"), CourtCenter + FVector(0.0f, 2150.0f, 280.0f), FLinearColor(1.0f, 0.85f, 0.35f), 7000.0f, 1500.0f);
 
 	if (L1) SacredPathLights.Add(L1);
 	if (L2) SacredPathLights.Add(L2);
@@ -1870,12 +1896,20 @@ void AFestivalStreetBuilder::BuildSacredMountainRegion(const FVector& ThresholdO
 	CreateMeshPiece(TEXT("Crag_Step_3"), CubeMesh, ThresholdOrigin + FVector(0.0f, 750.0f, 265.0f), FRotator::ZeroRotator, FVector(6.0f, 3.5f, 1.8f), true, GrayMaterial);
 
 	// Flanking canyon cliff walls
-	CreateMeshPiece(TEXT("Mountain_Cliff_L"), CubeMesh, ThresholdOrigin + FVector(-450.0f, 500.0f, 285.0f), FRotator::ZeroRotator, FVector(2.0f, 10.0f, 6.0f), true, DarkMaterial);
-	CreateMeshPiece(TEXT("Mountain_Cliff_R"), CubeMesh, ThresholdOrigin + FVector(450.0f, 500.0f, 285.0f), FRotator::ZeroRotator, FVector(2.0f, 10.0f, 6.0f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Mountain_Cliff_L"), CubeMesh, ThresholdOrigin + FVector(-480.0f, 500.0f, 340.0f), FRotator::ZeroRotator, FVector(2.5f, 12.0f, 9.0f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Mountain_Cliff_R"), CubeMesh, ThresholdOrigin + FVector(480.0f, 500.0f, 340.0f), FRotator::ZeroRotator, FVector(2.5f, 12.0f, 9.0f), true, DarkMaterial);
 
-	// Toran marker posts at beginning of ascent
+	// Majestic mountain canyon pinnacles framing the ascent chasm
+	CreateMeshPiece(TEXT("Mountain_Pinnacle_L"), CubeMesh, ThresholdOrigin + FVector(-620.0f, 1400.0f, 750.0f), FRotator::ZeroRotator, FVector(4.0f, 12.0f, 15.0f), true, DarkMaterial);
+	CreateMeshPiece(TEXT("Mountain_Pinnacle_R"), CubeMesh, ThresholdOrigin + FVector(620.0f, 1400.0f, 750.0f), FRotator::ZeroRotator, FVector(4.0f, 12.0f, 15.0f), true, DarkMaterial);
+
+	// Toran marker posts and grand arch at beginning of ascent
 	CreateMeshPiece(TEXT("Mountain_Toran_L"), CubeMesh, ThresholdOrigin + FVector(-250.0f, 150.0f, 105.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
 	CreateMeshPiece(TEXT("Mountain_Toran_R"), CubeMesh, ThresholdOrigin + FVector(250.0f, 150.0f, 105.0f), FRotator::ZeroRotator, FVector(0.8f, 0.8f, 2.4f), true, SindoorMat);
+	CreateMeshPiece(TEXT("Mountain_Toran_Arch"), ChamferCubeMesh ? ChamferCubeMesh : CubeMesh, ThresholdOrigin + FVector(0.0f, 150.0f, 225.0f), FRotator::ZeroRotator, FVector(5.5f, 0.9f, 0.4f), true, GoldMat);
+
+	// Cool celestial beacon light marking the mountain entrance threshold
+	CreateFestivalLight(TEXT("Mountain_Entrance_Light"), ThresholdOrigin + FVector(0.0f, 350.0f, 280.0f), FLinearColor(0.12f, 0.75f, 1.0f), 6500.0f, 1400.0f);
 
 	// Sacred Mountain Ascent discovery trigger
 	MountainAscentTriggerComp = NewObject<UBoxComponent>(this, TEXT("MountainAscentTriggerComp"));
@@ -1957,13 +1991,38 @@ void AFestivalStreetBuilder::BuildSacredMountainRegion(const FVector& ThresholdO
 			CyanRuneMat ? CyanRuneMat : GlowMaterial
 		);
 
-		// Ambient cyan light beneath and around the platform
+		// Floating cyan traversal ring above the platform
+		if (CircularBandMesh)
+		{
+			CreateMeshPiece(
+				FString::Printf(TEXT("FP_RuneRing_%d"), i + 1),
+				CircularBandMesh,
+				PlatLoc + FVector(0.0f, 0.0f, 75.0f),
+				FRotator(90.0f, 0.0f, 0.0f),
+				FVector(1.35f, 1.35f, 1.35f),
+				false,
+				CyanRuneMat ? CyanRuneMat : GlowMaterial
+			);
+		}
+
+		// Vertical celestial beacon ray guiding the flight path
+		CreateMeshPiece(
+			FString::Printf(TEXT("FP_BeaconRay_%d"), i + 1),
+			CylinderMesh,
+			PlatLoc + FVector(0.0f, 0.0f, 155.0f),
+			FRotator::ZeroRotator,
+			FVector(0.2f, 0.2f, 2.2f),
+			false,
+			CyanRuneMat ? CyanRuneMat : GlowMaterial
+		);
+
+		// Ambient celestial cyan light beneath and around the platform
 		CreateFestivalLight(
 			FString::Printf(TEXT("FP_Light_%d"), i + 1),
 			PlatLoc + FVector(0.0f, 0.0f, 70.0f),
-			FLinearColor(0.1f, 0.85f, 1.0f),
-			3500.0f,
-			700.0f
+			FLinearColor(0.15f, 0.90f, 1.0f),
+			5500.0f,
+			900.0f
 		);
 	}
 
@@ -2005,7 +2064,7 @@ void AFestivalStreetBuilder::BuildSacredMountainRegion(const FVector& ThresholdO
 	CreateMeshPiece(TEXT("Summit_Kalash_Spire"), CylinderMesh, SummitCenter + FVector(0.0f, 0.0f, 380.0f), FRotator::ZeroRotator, FVector(1.2f, 1.2f, 1.5f), false, GoldMat);
 
 	// Radiant divine illumination at summit
-	CreateFestivalLight(TEXT("Summit_Divine_Light"), SummitCenter + FVector(0.0f, 0.0f, 250.0f), FLinearColor(1.0f, 0.85f, 0.35f), 9000.0f, 2000.0f);
+	SummitDivineLightComp = CreateFestivalLight(TEXT("Summit_Divine_Light"), SummitCenter + FVector(0.0f, 0.0f, 250.0f), FLinearColor(1.0f, 0.85f, 0.35f), 9000.0f, 2000.0f);
 	CreateFestivalLight(TEXT("Summit_Accent_Light"), SummitCenter + FVector(0.0f, 0.0f, 100.0f), FLinearColor(0.15f, 0.85f, 1.0f), 5000.0f, 1000.0f);
 
 	// Kailash Summit Region Trigger
@@ -2053,11 +2112,22 @@ void AFestivalStreetBuilder::SetSacredPathUnlocked(bool bUnlocked)
 	{
 		if (Light)
 		{
-			Light->SetIntensity(bUnlocked ? 6500.0f : 2500.0f);
+			Light->SetIntensity(bUnlocked ? 8000.0f : 2500.0f);
 		}
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("AFestivalStreetBuilder: Sacred Path gate unlocked state set to %s"), bUnlocked ? TEXT("TRUE (PASSABLE)") : TEXT("FALSE (SEALED)"));
+}
+
+void AFestivalStreetBuilder::EnhanceSummitCommunionLighting()
+{
+	if (SummitDivineLightComp)
+	{
+		SummitDivineLightComp->SetIntensity(24000.0f);
+		SummitDivineLightComp->SetAttenuationRadius(3200.0f);
+		SummitDivineLightComp->SetLightColor(FLinearColor(1.0f, 0.92f, 0.45f));
+		UE_LOG(LogTemp, Log, TEXT("AFestivalStreetBuilder: Enhanced summit divine lighting for Kailash Communion!"));
+	}
 }
 
 void AFestivalStreetBuilder::HandleCourtyardBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -2360,7 +2430,12 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 			if (AGanapatiInteractable* ShrineAct = Cast<AGanapatiInteractable>(Act))
 			{
 				MountainShrineActor = ShrineAct;
-				ShrineAct->SetTriggersPrayerSequence(false);
+				ShrineAct->SetTriggersPrayerSequence(true);
+				ShrineAct->SetPrayerHoldDuration(4.5f);
+				ShrineAct->SetPrayerBlendInDuration(1.2f);
+				ShrineAct->SetPrayerBlendOutDuration(1.2f);
+				ShrineAct->SetPrayerCameraRelativeOffset(FVector(-350.0f, -220.0f, 180.0f));
+				ShrineAct->SetPrayerCameraLookAtOffset(FVector(0.0f, 30.0f, 110.0f));
 			}
 			break;
 		}
@@ -2383,7 +2458,12 @@ void AFestivalStreetBuilder::PopulateWorldActors()
 			MountainShrineActor->SetRestoresHealth(true);
 			MountainShrineActor->SetDivineEnergyGranted(100.0f);
 			MountainShrineActor->SetSingleUse(false);
-			MountainShrineActor->SetTriggersPrayerSequence(false);
+			MountainShrineActor->SetTriggersPrayerSequence(true);
+			MountainShrineActor->SetPrayerHoldDuration(4.5f);
+			MountainShrineActor->SetPrayerBlendInDuration(1.2f);
+			MountainShrineActor->SetPrayerBlendOutDuration(1.2f);
+			MountainShrineActor->SetPrayerCameraRelativeOffset(FVector(-350.0f, -220.0f, 180.0f));
+			MountainShrineActor->SetPrayerCameraLookAtOffset(FVector(0.0f, 30.0f, 110.0f));
 
 			if (MountainShrineActor->GetTriggerSphere())
 			{

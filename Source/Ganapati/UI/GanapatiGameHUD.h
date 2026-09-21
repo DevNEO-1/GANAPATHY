@@ -43,6 +43,9 @@ public:
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	/** Draws the cinematic prologue letterbox, title card, and first objective prompt */
+	void DrawOpeningCinematicOverlay(float ScreenW, float ScreenH);
+
 	/** Draws the top cinematic festival objective banner */
 	void DrawObjectiveBanner(float ScreenW, float ScreenH);
 
@@ -57,6 +60,9 @@ protected:
 
 	/** Draws the controls reminder card at bottom right */
 	void DrawControlsOverlay(float ScreenW, float ScreenH);
+
+	/** Draws the grand vertical-slice victory card upon Kailash Summit communion (Phase 6D Subsystem 4) */
+	void DrawSummitVictoryCard(float ScreenW, float ScreenH, AGanapatiFestivalGameMode* FestGM);
 
 	/** Helper to draw a semi-transparent tinted rectangle */
 	void DrawTintedBox(float X, float Y, float W, float H, const FLinearColor& Color);
@@ -104,4 +110,8 @@ private:
 	// ── Phase 5C Subsystem 3: Boss HUD State ──
 	float BossBarFadeAlpha = 0.0f;
 	float BossBarDefeatTimer = 0.0f;
+
+	// ── Phase 6D Subsystem 4: Summit Victory HUD State ──
+	float SummitVictoryCardRemainingTime = 0.0f;
+	bool bSummitVictoryTriggered = false;
 };

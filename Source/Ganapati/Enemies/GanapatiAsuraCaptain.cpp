@@ -5,7 +5,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Components/PointLightComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 
@@ -29,6 +31,17 @@ AGanapatiAsuraCaptain::AGanapatiAsuraCaptain()
 	{
 		FloatingHealthText->SetRelativeLocation(FVector(0.0f, 0.0f, 175.0f));
 		FloatingHealthText->SetWorldSize(30.0f);
+	}
+
+	// Setup attack telegraph point light
+	AttackTelegraphLightComp = CreateDefaultSubobject<UPointLightComponent>(TEXT("AttackTelegraphLight"));
+	if (AttackTelegraphLightComp)
+	{
+		AttackTelegraphLightComp->SetupAttachment(RootComponent);
+		AttackTelegraphLightComp->SetRelativeLocation(FVector(0.0f, 0.0f, 90.0f));
+		AttackTelegraphLightComp->SetIntensity(0.0f);
+		AttackTelegraphLightComp->SetAttenuationRadius(650.0f);
+		AttackTelegraphLightComp->SetCastShadows(false);
 	}
 
 	// Movement tuning: imposing, deliberate advance (190 cm/s)
@@ -89,6 +102,22 @@ void AGanapatiAsuraCaptain::StartAttack()
 {
 	SelectAttackForDistance();
 	Super::StartAttack();
+
+	if (AttackTelegraphLightComp)
+	{
+		if (CurrentAttackPattern == ECaptainAttackPattern::HeavyCleave)
+		{
+			// Amber / fiery orange warning glow
+			AttackTelegraphLightComp->SetLightColor(FLinearColor(1.0f, 0.40f, 0.05f));
+			AttackTelegraphLightComp->SetIntensity(bIsEnraged ? 8500.0f : 6000.0f);
+		}
+		else
+		{
+			// Deep crimson danger glow for Overhead Smash
+			AttackTelegraphLightComp->SetLightColor(FLinearColor(1.0f, 0.05f, 0.05f));
+			AttackTelegraphLightComp->SetIntensity(bIsEnraged ? 11000.0f : 8500.0f);
+		}
+	}
 }
 
 void AGanapatiAsuraCaptain::SelectAttackForDistance()
@@ -271,10 +300,38 @@ void AGanapatiAsuraCaptain::DoAttackTrace(FName DamageSourceBone)
 			}
 		}
 	}
+
+	// Turn off telegraph light upon attack execution
+	if (AttackTelegraphLightComp)
+	{
+		AttackTelegraphLightComp->SetIntensity(0.0f);
+	}
+
+	// Overhead smash ground shock camera shake on player
+	if (CurrentAttackPattern == ECaptainAttackPattern::OverheadSmash)
+	{
+		if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
+		{
+			if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
+			{
+				const float Dist = FVector::Dist(GetActorLocation(), PlayerChar->GetActorLocation());
+				if (Dist < 1200.0f)
+				{
+					const float ShakeScale = FMath::Clamp(1.0f - (Dist / 1200.0f), 0.2f, 1.0f) * 0.85f;
+					PlayerChar->PlayCameraShake(PlayerChar->GetHeavyAttackCameraShakeClass(), ShakeScale);
+				}
+			}
+		}
+	}
 }
 
 void AGanapatiAsuraCaptain::FinishAttack()
 {
+	if (AttackTelegraphLightComp)
+	{
+		AttackTelegraphLightComp->SetIntensity(0.0f);
+	}
+
 	if (CurrentState == EAsuraAIState::Attacking)
 	{
 		// Enter explicit 0.65s post-attack vulnerability / recovery window
@@ -434,6 +491,22 @@ void AGanapatiAsuraCaptain::TriggerEnrage()
 	// Update attack pattern timings for enrage (Cleave 0.82s, Smash 1.05s, Cooldown 2.8s)
 	ApplyAttackPatternSettings();
 
+	// Enraged camera pulse on player
+	if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
+	{
+		if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
+		{
+			PlayerChar->PlayCameraShake(PlayerChar->GetHeavyAttackCameraShakeClass(), 1.25f);
+		}
+	}
+
+	// Dynamic fiery crimson surge on telegraph light
+	if (AttackTelegraphLightComp)
+	{
+		AttackTelegraphLightComp->SetLightColor(FLinearColor(1.0f, 0.02f, 0.02f));
+		AttackTelegraphLightComp->SetIntensity(11000.0f);
+	}
+
 	// Broadcast Blueprint implementable hook
 	BP_OnCaptainEnraged();
 
@@ -451,6 +524,11 @@ void AGanapatiAsuraCaptain::ResetBossState()
 		World->GetTimerManager().ClearTimer(AttackRecoveryTimerHandle);
 		World->GetTimerManager().ClearTimer(StaggerTimerHandle);
 		World->GetTimerManager().ClearTimer(HitStopTimerHandle);
+	}
+
+	if (AttackTelegraphLightComp)
+	{
+		AttackTelegraphLightComp->SetIntensity(0.0f);
 	}
 
 	bIsRecovering = false;
@@ -497,6 +575,21 @@ void AGanapatiAsuraCaptain::HandleDeath()
 
 	CurrentState = EAsuraAIState::Dead;
 	bIsRecovering = false;
+
+	// Extinguish attack telegraph light
+	if (AttackTelegraphLightComp)
+	{
+		AttackTelegraphLightComp->SetIntensity(0.0f);
+	}
+
+	// Dramatic defeat impact camera shake on player
+	if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
+	{
+		if (AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(PlayerPawn))
+		{
+			PlayerChar->PlayCameraShake(PlayerChar->GetHeavyAttackCameraShakeClass(), 1.4f);
+		}
+	}
 
 	// Clear active timers
 	if (UWorld* World = GetWorld())

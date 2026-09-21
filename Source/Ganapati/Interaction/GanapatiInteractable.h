@@ -93,6 +93,26 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Interaction|Prayer")
 	bool IsPrayerActive() const { return bIsPrayerActive; }
 
+	/** Sets prayer hold duration in seconds */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Prayer")
+	void SetPrayerHoldDuration(float InDuration) { PrayerHoldDuration = FMath::Max(0.5f, InDuration); }
+
+	/** Sets camera blend-in duration in seconds */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Prayer")
+	void SetPrayerBlendInDuration(float InDuration) { PrayerBlendInDuration = FMath::Max(0.0f, InDuration); }
+
+	/** Sets camera blend-out duration in seconds */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Prayer")
+	void SetPrayerBlendOutDuration(float InDuration) { PrayerBlendOutDuration = FMath::Max(0.0f, InDuration); }
+
+	/** Sets relative offset for prayer camera from shrine root */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Prayer")
+	void SetPrayerCameraRelativeOffset(const FVector& InOffset) { PrayerCameraRelativeOffset = InOffset; }
+
+	/** Sets relative look-at focal point for prayer camera */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Interaction|Prayer")
+	void SetPrayerCameraLookAtOffset(const FVector& InOffset) { PrayerCameraLookAtOffset = InOffset; }
+
 	/** Broadcast when player interacts */
 	UPROPERTY(BlueprintAssignable, Category="Ganapati|Interaction|Events")
 	FOnGanapatiInteractedSignature OnInteracted;

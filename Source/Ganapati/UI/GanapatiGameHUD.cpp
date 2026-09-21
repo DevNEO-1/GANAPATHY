@@ -28,6 +28,12 @@ void AGanapatiGameHUD::DrawHUD()
 	AGanapatiPlayerCharacter* PlayerChar = Cast<AGanapatiPlayerCharacter>(GetOwningPawn());
 	AGanapatiFestivalGameMode* FestGM = Cast<AGanapatiFestivalGameMode>(GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr);
 
+	if (FestGM && FestGM->IsPlayingOpeningCinematic())
+	{
+		DrawOpeningCinematicOverlay(ScreenW, ScreenH);
+		return;
+	}
+
 	DrawObjectiveBanner(ScreenW, ScreenH);
 	DrawCaptainBossBar(ScreenW, ScreenH, FestGM);
 	DrawControlsOverlay(ScreenW, ScreenH);
@@ -37,6 +43,75 @@ void AGanapatiGameHUD::DrawHUD()
 		DrawPlayerStatus(ScreenW, ScreenH, PlayerChar);
 		DrawInteractionOverlay(ScreenW, ScreenH, PlayerChar);
 	}
+
+	if (FestGM && FestGM->IsMountainShrineActivated())
+	{
+		DrawSummitVictoryCard(ScreenW, ScreenH, FestGM);
+	}
+}
+
+void AGanapatiGameHUD::DrawOpeningCinematicOverlay(float ScreenW, float ScreenH)
+{
+	const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	const float Pulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 3.0f));
+
+	// 1. Cinematic Widescreen Letterbox Bars (Top and Bottom)
+	const float BarH = FMath::Clamp(ScreenH * 0.12f, 75.0f, 135.0f);
+	DrawTintedBox(0.0f, 0.0f, ScreenW, BarH, FLinearColor(0.01f, 0.01f, 0.015f, 0.96f));
+	DrawTintedBox(0.0f, ScreenH - BarH, ScreenW, BarH, FLinearColor(0.01f, 0.01f, 0.015f, 0.96f));
+
+	// Golden dividing lines along letterbox inner edges
+	DrawTintedBox(0.0f, BarH - 2.5f, ScreenW, 2.5f, FLinearColor(1.0f * Pulse, 0.75f * Pulse, 0.2f, 0.9f));
+	DrawTintedBox(0.0f, ScreenH - BarH, ScreenW, 2.5f, FLinearColor(1.0f * Pulse, 0.75f * Pulse, 0.2f, 0.9f));
+
+	// 2. Top Location & Event Header
+	const FString HeaderLocation = TEXT("✦ GANESH CHATURTHI FESTIVAL  |  SACRED STREETS OF MAHARASHTRA ✦");
+	const float HeaderW = 760.0f;
+	const float HeaderX = FMath::Max(20.0f, (ScreenW - HeaderW) * 0.5f);
+	DrawText(HeaderLocation, FLinearColor(1.0f, 0.80f, 0.30f, 0.95f), HeaderX, BarH * 0.40f, nullptr, 1.05f);
+
+	// 3. Central Cinematic Title & Narrative Prologue Card
+	const float CardW = FMath::Min(860.0f, ScreenW - 60.0f);
+	const float CardH = 200.0f;
+	const float CardX = (ScreenW - CardW) * 0.5f;
+	const float CardY = ScreenH - BarH - CardH - 25.0f;
+
+	// Dark semi-transparent card backing with saffron border
+	DrawTintedBox(CardX, CardY, CardW, CardH, FLinearColor(0.02f, 0.02f, 0.035f, 0.82f));
+	DrawTintedBox(CardX, CardY, CardW, 3.0f, DivineFullColor * Pulse);
+	DrawTintedBox(CardX, CardY + CardH - 2.0f, CardW, 2.0f, PrimaryFestiveColor);
+
+	// Title
+	const FString MainTitle = TEXT("GANAPATI: THE DIVINE JOURNEY");
+	DrawText(MainTitle, DivineFullColor * Pulse, CardX + 35.0f, CardY + 16.0f, nullptr, 1.55f);
+
+	// Sanskrit Blessing & Subtitle
+	const FString Subtitle = TEXT("ॐ श्री गणेशाय नमः  •  PILGRIMAGE OF THE SACRED ASCENT");
+	DrawText(Subtitle, PrimaryFestiveColor, CardX + 35.0f, CardY + 54.0f, nullptr, 1.05f);
+
+	// Prologue lines
+	const FString LoreLine1 = TEXT("The sacred festival has begun. Devotees gather to celebrate Lord Vighnaharta's divine grace.");
+	const FString LoreLine2 = TEXT("Seek the holy blessings, purify the sanctuary from darkness, and ascend Mount Kailash.");
+	DrawText(LoreLine1, FLinearColor(0.92f, 0.92f, 0.96f, 0.92f), CardX + 35.0f, CardY + 84.0f, nullptr, 0.88f);
+	DrawText(LoreLine2, FLinearColor(0.85f, 0.85f, 0.90f, 0.85f), CardX + 35.0f, CardY + 106.0f, nullptr, 0.88f);
+
+	// Objective Callout Box
+	const float ObjBoxW = CardW - 70.0f;
+	const float ObjBoxH = 38.0f;
+	const float ObjBoxX = CardX + 35.0f;
+	const float ObjBoxY = CardY + 138.0f;
+
+	DrawTintedBox(ObjBoxX, ObjBoxY, ObjBoxW, ObjBoxH, FLinearColor(0.12f, 0.08f, 0.02f, 0.85f));
+	DrawTintedBox(ObjBoxX, ObjBoxY, 3.0f, ObjBoxH, DivineFullColor);
+
+	const FString FirstObjective = TEXT("FIRST RITE: Seek the blessings of sweetmaker Halwai Anand at the Sweet Stall");
+	DrawText(FirstObjective, FLinearColor(1.0f, 0.95f, 0.45f, 1.0f), ObjBoxX + 15.0f, ObjBoxY + 10.0f, nullptr, 1.0f);
+
+	// 4. Skip prompt in bottom letterbox
+	const FString SkipPrompt = TEXT("[ SPACE ]  Begin Journey");
+	const float SkipW = 240.0f;
+	const float SkipX = (ScreenW - SkipW) * 0.5f;
+	DrawText(SkipPrompt, FLinearColor(0.85f, 0.85f, 0.85f, 0.75f * Pulse), SkipX, ScreenH - (BarH * 0.60f), nullptr, 0.95f);
 }
 
 void AGanapatiGameHUD::DrawTintedBox(float X, float Y, float W, float H, const FLinearColor& Color)
@@ -142,13 +217,26 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 		DrawTintedBox(BannerX, BannerY, BannerW, 3.0f, DivineFullColor * GoldPulse);
 		DrawTintedBox(BannerX, BannerY + BannerH - 2.0f, BannerW, 2.0f, PrimaryFestiveColor);
 
-		const FString JourneyHeader = TEXT("✦ THE SACRED JOURNEY — PILGRIMAGE OF THE ASCENT ✦");
-		const FString ObjTitle = FestGM->GetCurrentObjectiveTitle();
-		const FString ObjDesc = FestGM->GetCurrentObjectiveDescription();
+		if (FestGM->IsMountainShrineActivated())
+		{
+			const FString CompleteHeader = TEXT("✦ SACRED PILGRIMAGE FULFILLED — KAILASH COMMUNION ATTAINED ✦");
+			const FString CompleteTitle = TEXT("✦ Divine Communion Blessed: Lord Vighnaharta's Eternal Grace Radiant! ✦");
+			const FString CompleteDesc = TEXT("The pilgrimage of Mount Kailash is fulfilled! Vertical slice complete. Explore freely with [G] Anti-Gravity.");
 
-		DrawText(JourneyHeader, DivineFullColor * GoldPulse, BannerX + 165.0f, BannerY + 10.0f, nullptr, 1.15f);
-		DrawText(ObjTitle, FLinearColor(1.0f, 0.95f, 0.45f, 1.0f), BannerX + 35.0f, BannerY + 32.0f, nullptr, 1.05f);
-		DrawText(ObjDesc, FLinearColor(0.9f, 0.9f, 0.95f, 0.95f), BannerX + 35.0f, BannerY + 49.0f, nullptr, 0.82f);
+			DrawText(CompleteHeader, DivineFullColor * GoldPulse, BannerX + 110.0f, BannerY + 10.0f, nullptr, 1.15f);
+			DrawText(CompleteTitle, FLinearColor(1.0f, 0.95f, 0.45f, 1.0f), BannerX + 35.0f, BannerY + 32.0f, nullptr, 1.05f);
+			DrawText(CompleteDesc, FLinearColor(0.9f, 0.9f, 0.95f, 0.95f), BannerX + 35.0f, BannerY + 49.0f, nullptr, 0.82f);
+		}
+		else
+		{
+			const FString JourneyHeader = TEXT("✦ THE SACRED JOURNEY — PILGRIMAGE OF THE ASCENT ✦");
+			const FString ObjTitle = FestGM->GetCurrentObjectiveTitle();
+			const FString ObjDesc = FestGM->GetCurrentObjectiveDescription();
+
+			DrawText(JourneyHeader, DivineFullColor * GoldPulse, BannerX + 165.0f, BannerY + 10.0f, nullptr, 1.15f);
+			DrawText(ObjTitle, FLinearColor(1.0f, 0.95f, 0.45f, 1.0f), BannerX + 35.0f, BannerY + 32.0f, nullptr, 1.05f);
+			DrawText(ObjDesc, FLinearColor(0.9f, 0.9f, 0.95f, 0.95f), BannerX + 35.0f, BannerY + 49.0f, nullptr, 0.82f);
+		}
 	}
 	else if (FestGM && FestGM->IsQuestCompleted())
 	{
@@ -200,7 +288,19 @@ void AGanapatiGameHUD::DrawObjectiveBanner(float ScreenW, float ScreenH)
 		// Dark background
 		DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, SkirmishH, FLinearColor(0.03f, 0.02f, 0.02f, 0.85f));
 
-		if (FestGM->GetStoryProgressionState() == EStoryProgressionState::SacredJourney)
+		if (FestGM->IsMountainShrineActivated())
+		{
+			// Radiant divine gold Kailash Summit Blessed card (Phase 6D Subsystem 4)
+			const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+			const float GoldPulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 3.5f));
+
+			DrawTintedBox(SkirmishX, SkirmishY, SkirmishW, 2.5f, FLinearColor(1.0f, 0.85f, 0.25f, 0.95f) * GoldPulse);
+			DrawTintedBox(SkirmishX, SkirmishY + SkirmishH - 2.0f, SkirmishW, 2.0f, FLinearColor(1.0f, 0.65f, 0.15f, 0.85f));
+
+			const FString SummitBlessedText = TEXT("✦ KAILASH SUMMIT BLESSED — THE SACRED PILGRIMAGE IS FULFILLED ✦");
+			DrawText(SummitBlessedText, FLinearColor(1.0f, 0.95f, 0.45f, 1.0f), SkirmishX + 36.0f, SkirmishY + 14.0f, nullptr, 1.05f);
+		}
+		else if (FestGM->GetStoryProgressionState() == EStoryProgressionState::SacredJourney)
 		{
 			// Radiant divine gold Sacred Path unlocked card (Phase 5D Subsystem 1)
 			const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
@@ -265,9 +365,9 @@ void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiP
 	}
 
 	const float BoxX = 35.0f;
-	const float BoxY = ScreenH - 145.0f;
-	const float BoxW = 290.0f;
-	const float BoxH = 115.0f;
+	const float BoxY = ScreenH - 155.0f;
+	const float BoxW = 295.0f;
+	const float BoxH = 125.0f;
 
 	// Background card
 	DrawTintedBox(BoxX, BoxY, BoxW, BoxH, FLinearColor(0.02f, 0.02f, 0.04f, 0.78f));
@@ -281,7 +381,7 @@ void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiP
 	DrawText(FString::Printf(TEXT("HEALTH  %.0f / %.0f"), CurrentHP, MaxHP), FLinearColor::White, BoxX + 15.0f, BoxY + 8.0f, nullptr, 0.90f);
 
 	const float BarX = BoxX + 15.0f;
-	const float BarW = 255.0f;
+	const float BarW = 260.0f;
 	const float BarH = 8.0f;
 
 	// Health Bar BG
@@ -294,19 +394,26 @@ void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiP
 	// ── 2. Divine Energy (Modak) Meter ──
 	const bool bIsFull = CachedDivineEnergyPercent >= 0.999f;
 	const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
-	const float Pulse = bIsFull ? (0.80f + 0.20f * FMath::Abs(FMath::Sin(TimeSec * 4.0f))) : 1.0f;
+	const float Pulse = bIsFull ? (0.80f + 0.20f * FMath::Abs(FMath::Sin(TimeSec * 4.5f))) : 1.0f;
 
 	const FLinearColor MeterTextColor = bIsFull
 		? FLinearColor(DivineFullColor.R * Pulse, DivineFullColor.G * Pulse, DivineFullColor.B * Pulse, 1.0f)
 		: DivineEnergyColor;
 
 	const FString EnergyText = bIsFull
-		? TEXT("✦ DIVINE POWER: 100% READY ✦")
+		? TEXT("✦ [Q] DIVINE SHOCKWAVE READY ✦")
 		: FString::Printf(TEXT("DIVINE ENERGY  %.0f / %.0f"), CachedDivineEnergy, CachedMaxDivineEnergy);
 
 	DrawText(EnergyText, MeterTextColor, BoxX + 15.0f, BoxY + 38.0f, nullptr, 0.90f);
 
 	const float EnergyBarY = BoxY + 54.0f;
+
+	// Glowing aura border when Divine Shockwave is primed
+	if (bIsFull)
+	{
+		DrawTintedBox(BarX - 2.0f, EnergyBarY - 2.0f, BarW + 4.0f, BarH + 4.0f, FLinearColor(1.0f * Pulse, 0.85f * Pulse, 0.25f, 0.90f * Pulse));
+	}
+
 	// Energy Bar BG
 	DrawTintedBox(BarX, EnergyBarY, BarW, BarH, FLinearColor(0.12f, 0.12f, 0.14f, 0.85f));
 
@@ -322,26 +429,38 @@ void AGanapatiGameHUD::DrawPlayerStatus(float ScreenW, float ScreenH, AGanapatiP
 		DrawTintedBox(CapX, EnergyBarY - 1.0f, 3.0f, BarH + 2.0f, bIsFull ? FLinearColor::White : FLinearColor(1.0f, 0.95f, 0.7f, 1.0f));
 	}
 
-	// ── 3. Anti-Gravity Indicator ──
+	// ── 3. Action Cue or Anti-Gravity Status ──
 	UGanapatiMovementComponent* MovComp = PlayerChar->GetGanapatiMovementComponent();
 	const bool bAntiGrav = MovComp && MovComp->IsAntiGravityActive();
 	AGanapatiFestivalGameMode* FestGM = Cast<AGanapatiFestivalGameMode>(GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr);
 	const bool bAscension = FestGM && FestGM->IsDivineAscensionDiscovered();
 
-	if (bAntiGrav)
+	if (bIsFull)
+	{
+		// Prominent readiness directive
+		DrawText(TEXT("PRESS [Q] TO UNLEASH GANESHA'S RADIANCE!"), FLinearColor(1.0f, 0.95f, 0.45f, Pulse), BoxX + 15.0f, BoxY + 68.0f, nullptr, 0.78f);
+	}
+	else if (bAntiGrav)
 	{
 		const FString ActiveText = bAscension ? TEXT("✦ DIVINE ASCENSION: ACTIVE [G] ✦") : TEXT("✦ DIVINE LEVITATION: ACTIVE [G] ✦");
-		DrawText(ActiveText, AccentCyan, BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.90f);
+		DrawText(ActiveText, AccentCyan, BoxX + 15.0f, BoxY + 68.0f, nullptr, 0.88f);
 	}
 	else
 	{
 		const FString StandbyText = bAscension ? TEXT("✦ Divine Ascension Standby [G] ✦") : TEXT("Levitation: Standby (Press [G])");
 		const FLinearColor StandbyColor = bAscension ? FLinearColor(0.85f, 0.85f, 0.95f, 0.9f) : FLinearColor(0.6f, 0.6f, 0.65f, 0.8f);
-		DrawText(StandbyText, StandbyColor, BoxX + 15.0f, BoxY + 70.0f, nullptr, 0.85f);
+		DrawText(StandbyText, StandbyColor, BoxX + 15.0f, BoxY + 68.0f, nullptr, 0.82f);
 	}
 
-	// ── 4. Modak / Offering Hint ──
-	DrawText(TEXT("Melee hits & Shrine offerings generate Divine Energy"), FLinearColor(0.70f, 0.70f, 0.75f, 0.75f), BoxX + 15.0f, BoxY + 90.0f, nullptr, 0.75f);
+	// ── 4. Hint Line ──
+	if (bIsFull)
+	{
+		DrawText(TEXT("Devastating radial divine blast breaks enemy poise"), FLinearColor(0.95f, 0.90f, 0.70f, 0.85f), BoxX + 15.0f, BoxY + 86.0f, nullptr, 0.72f);
+	}
+	else
+	{
+		DrawText(TEXT("Melee hits & Shrine offerings restore Divine Energy"), FLinearColor(0.70f, 0.70f, 0.75f, 0.75f), BoxX + 15.0f, BoxY + 86.0f, nullptr, 0.72f);
+	}
 }
 
 void AGanapatiGameHUD::HandleDivineEnergyChanged(float NewEnergy, float MaxEnergy)
@@ -404,8 +523,8 @@ void AGanapatiGameHUD::DrawInteractionOverlay(float ScreenW, float ScreenH, AGan
 
 void AGanapatiGameHUD::DrawControlsOverlay(float ScreenW, float ScreenH)
 {
-	const float BoxW = 280.0f;
-	const float BoxH = 150.0f;
+	const float BoxW = 285.0f;
+	const float BoxH = 168.0f;
 	const float BoxX = ScreenW - BoxW - 30.0f;
 	const float BoxY = ScreenH - BoxH - 30.0f;
 
@@ -422,8 +541,8 @@ void AGanapatiGameHUD::DrawControlsOverlay(float ScreenW, float ScreenH)
 		TEXT("Space: Jump / Double Jump"),
 		TEXT("Shift: Sprint  |  Ctrl: Dash"),
 		TEXT("LMB: Light Combo  |  RMB: Heavy Strike"),
-		TEXT("G: Anti-Gravity  |  V: Shoulder Cam"),
-		TEXT("E: Interact / Offer Prayers")
+		TEXT("Q: Divine Shockwave  |  G: Anti-Grav"),
+		TEXT("E: Interact / Prayer  |  V: Shoulder Cam")
 	};
 
 	float LineY = BoxY + 28.0f;
@@ -599,4 +718,96 @@ void AGanapatiGameHUD::DrawCaptainBossBar(float ScreenW, float ScreenH, AGanapat
 		const float BadgeX = (ScreenW - TextW) * 0.5f;
 		DrawText(StateBadgeText, StateBadgeColor, BadgeX, BarY + 43.0f, nullptr, 0.85f);
 	}
+}
+
+void AGanapatiGameHUD::DrawSummitVictoryCard(float ScreenW, float ScreenH, AGanapatiFestivalGameMode* FestGM)
+{
+	if (!Canvas || !FestGM)
+	{
+		return;
+	}
+
+	const float DeltaSeconds = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.016f;
+
+	if (!bSummitVictoryTriggered)
+	{
+		bSummitVictoryTriggered = true;
+		SummitVictoryCardRemainingTime = 14.0f;
+	}
+
+	if (SummitVictoryCardRemainingTime > 0.0f)
+	{
+		SummitVictoryCardRemainingTime = FMath::Max(0.0f, SummitVictoryCardRemainingTime - DeltaSeconds);
+	}
+
+	// Only render the full grand card while the celebration timer is active
+	// After 14s, the top objective banner remains permanently active with the completion text
+	if (SummitVictoryCardRemainingTime <= 0.0f)
+	{
+		return;
+	}
+
+	const float AlphaFade = FMath::Clamp(SummitVictoryCardRemainingTime / 1.0f, 0.0f, 1.0f);
+	const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	const float Pulse = 0.85f + 0.15f * FMath::Abs(FMath::Sin(TimeSec * 3.5f));
+
+	const float CardW = FMath::Min(880.0f, ScreenW - 60.0f);
+	const float CardH = 240.0f;
+	const float CardX = (ScreenW - CardW) * 0.5f;
+	const float CardY = ScreenH - CardH - 65.0f;
+
+	// Dark semi-transparent card background
+	DrawTintedBox(CardX, CardY, CardW, CardH, FLinearColor(0.02f, 0.02f, 0.035f, 0.90f * AlphaFade));
+
+	// Glowing golden borders top and bottom
+	DrawTintedBox(CardX, CardY, CardW, 3.5f, FLinearColor(DivineFullColor.R * Pulse, DivineFullColor.G * Pulse, DivineFullColor.B * Pulse, AlphaFade));
+	DrawTintedBox(CardX, CardY + CardH - 2.5f, CardW, 2.5f, FLinearColor(PrimaryFestiveColor.R, PrimaryFestiveColor.G, PrimaryFestiveColor.B, AlphaFade));
+
+	// 1. Grand Victory Title
+	const FString VictoryTitle = TEXT("✦ DIVINE COMMUNION ATTAINED ✦");
+	DrawText(VictoryTitle, FLinearColor(DivineFullColor.R * Pulse, DivineFullColor.G * Pulse, DivineFullColor.B * Pulse, AlphaFade), CardX + 35.0f, CardY + 16.0f, nullptr, 1.55f);
+
+	// 2. Sanskrit Blessing & Subtitle
+	const FString Subtitle = TEXT("ॐ गं गणपतये नमः  •  THE SACRED PILGRIMAGE OF MOUNT KAILASH IS FULFILLED");
+	DrawText(Subtitle, FLinearColor(PrimaryFestiveColor.R, PrimaryFestiveColor.G, PrimaryFestiveColor.B, AlphaFade), CardX + 35.0f, CardY + 54.0f, nullptr, 1.05f);
+
+	// 3. Lore narrative
+	const FString LoreText = TEXT("Lord Vighnaharta's eternal grace has purified the realm. Darkness is dispelled, and your spirit is perfected.");
+	DrawText(LoreText, FLinearColor(0.92f, 0.92f, 0.96f, 0.90f * AlphaFade), CardX + 35.0f, CardY + 82.0f, nullptr, 0.88f);
+
+	// 4. Milestone Recap Badges (2 columns x 2 rows)
+	const float BoxW = (CardW - 90.0f) * 0.5f;
+	const float BoxH = 30.0f;
+	const float Col1X = CardX + 35.0f;
+	const float Col2X = CardX + 45.0f + BoxW;
+	const float Row1Y = CardY + 112.0f;
+	const float Row2Y = CardY + 148.0f;
+
+	const FLinearColor CheckGreen = FLinearColor(0.25f, 1.0f, 0.45f, AlphaFade);
+	const FLinearColor BadgeTextCol = FLinearColor(1.0f, 0.95f, 0.80f, AlphaFade);
+	const FLinearColor BadgeBg = FLinearColor(0.08f, 0.08f, 0.12f, 0.80f * AlphaFade);
+
+	// Badge 1: Darshan Rites Blessed
+	DrawTintedBox(Col1X, Row1Y, BoxW, BoxH, BadgeBg);
+	DrawTintedBox(Col1X, Row1Y, 3.0f, BoxH, CheckGreen);
+	DrawText(TEXT("✓  Sacred Darshan Rites Blessed"), BadgeTextCol, Col1X + 12.0f, Row1Y + 7.0f, nullptr, 0.90f);
+
+	// Badge 2: Courtyard Purified
+	DrawTintedBox(Col1X, Row2Y, BoxW, BoxH, BadgeBg);
+	DrawTintedBox(Col1X, Row2Y, 3.0f, BoxH, CheckGreen);
+	DrawText(TEXT("✓  Festival Courtyard Purified"), BadgeTextCol, Col1X + 12.0f, Row2Y + 7.0f, nullptr, 0.90f);
+
+	// Badge 3: Asura Captain Vanquished
+	DrawTintedBox(Col2X, Row1Y, BoxW, BoxH, BadgeBg);
+	DrawTintedBox(Col2X, Row1Y, 3.0f, BoxH, CheckGreen);
+	DrawText(TEXT("✓  Asura Captain Vanquished"), BadgeTextCol, Col2X + 12.0f, Row1Y + 7.0f, nullptr, 0.90f);
+
+	// Badge 4: Kailash Summit Conquered
+	DrawTintedBox(Col2X, Row2Y, BoxW, BoxH, BadgeBg);
+	DrawTintedBox(Col2X, Row2Y, 3.0f, BoxH, CheckGreen);
+	DrawText(TEXT("✓  Kailash Summit Conquered"), BadgeTextCol, Col2X + 12.0f, Row2Y + 7.0f, nullptr, 0.90f);
+
+	// 5. Vertical Slice Notice
+	const FString CompletionNotice = TEXT("GANAPATI: THE DIVINE JOURNEY  —  Vertical Slice Complete  |  Free Exploration & Anti-Gravity [G] Active");
+	DrawText(CompletionNotice, FLinearColor(AccentCyan.R, AccentCyan.G, AccentCyan.B, 0.95f * AlphaFade), CardX + 35.0f, CardY + 196.0f, nullptr, 0.88f);
 }

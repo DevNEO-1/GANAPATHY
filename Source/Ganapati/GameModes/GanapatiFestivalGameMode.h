@@ -77,6 +77,14 @@ public:
 
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
+	/** Returns true if the opening cinematic sequence is currently playing */
+	UFUNCTION(BlueprintPure, Category="Ganapati|Cinematic")
+	bool IsPlayingOpeningCinematic() const { return bIsPlayingOpeningCinematic; }
+
+	/** Skips the opening cinematic immediately into gameplay */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Cinematic")
+	void SkipOpeningCinematic();
+
 	/** Returns the current quest step */
 	UFUNCTION(BlueprintPure, Category="Ganapati|Quest")
 	ESacredDarshanStep GetCurrentQuestStep() const { return CurrentQuestStep; }
@@ -201,6 +209,10 @@ public:
 	/** Returns true if player has activated the Kailash Summit Shrine (Phase 6D) */
 	UFUNCTION(BlueprintPure, Category="Ganapati|World")
 	bool IsMountainShrineActivated() const;
+
+	/** Returns true if the Kailash summit finale communion celebration is currently active */
+	UFUNCTION(BlueprintPure, Category="Ganapati|World")
+	bool IsSummitFinaleActive() const { return bIsSummitFinaleActive; }
 
 	/** Blueprint implementable event fired when Divine Ascension is discovered (Phase 6C) */
 	UFUNCTION(BlueprintImplementableEvent, Category="Ganapati|World", meta=(DisplayName="On Divine Ascension Discovered"))
@@ -333,13 +345,24 @@ protected:
 	void BP_OnQuestCompleted();
 
 protected:
+	/** Whether the opening cinematic panoramic view is actively playing */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Cinematic")
+	bool bIsPlayingOpeningCinematic = false;
+
 	/** Duration in seconds to hold opening cinematic panoramic view */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Cinematic", meta=(ClampMin=1.0f, Units="s"))
-	float CinematicHoldDuration = 3.0f;
+	float CinematicHoldDuration = 4.0f;
 
 	/** Blend duration to swoop from cinematic view into player view */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ganapati|Cinematic", meta=(ClampMin=0.5f, Units="s"))
 	float CinematicBlendDuration = 2.0f;
+
+	/** Whether Kailash Summit Finale communion celebration is active */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Story")
+	bool bIsSummitFinaleActive = false;
+
+	/** Timer handle for Kailash Summit Finale communion presentation */
+	FTimerHandle SummitFinaleTimerHandle;
 
 	/** Current active step of the Sacred Darshan quest */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Quest")

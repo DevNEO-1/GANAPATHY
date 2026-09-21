@@ -46,6 +46,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="Ganapati|Story")
 	bool IsSacredPathUnlocked() const { return bSacredPathUnlocked; }
 
+	/** Enhances the divine lighting at Mount Kailash summit upon communion */
+	UFUNCTION(BlueprintCallable, Category="Ganapati|Mountain")
+	void EnhanceSummitCommunionLighting();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -239,6 +243,9 @@ protected:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> FloatingPlatformMeshes;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UPointLightComponent> SummitDivineLightComp;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ganapati|Mountain")
 	FVector ChasmRecoveryCheckpoint = FVector(800.0f, 4950.0f, 360.0f);
