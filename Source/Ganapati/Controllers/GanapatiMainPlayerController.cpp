@@ -90,6 +90,9 @@ void AGanapatiMainPlayerController::CreateInputActionsAndMappingContext()
 		Swizzle->Order = EInputAxisSwizzle::YXZ;
 		Mapping.Modifiers.Add(Swizzle);
 		UInputModifierNegate* Negate = NewObject<UInputModifierNegate>(IMC_Ganapati);
+		Negate->bX = false;
+		Negate->bY = true;
+		Negate->bZ = false;
 		Mapping.Modifiers.Add(Negate);
 	}
 
@@ -102,6 +105,9 @@ void AGanapatiMainPlayerController::CreateInputActionsAndMappingContext()
 	{
 		FEnhancedActionKeyMapping& Mapping = IMC_Ganapati->MapKey(IA_Move, EKeys::A);
 		UInputModifierNegate* Negate = NewObject<UInputModifierNegate>(IMC_Ganapati);
+		Negate->bX = true;
+		Negate->bY = false;
+		Negate->bZ = false;
 		Mapping.Modifiers.Add(Negate);
 	}
 
@@ -301,9 +307,8 @@ void AGanapatiMainPlayerController::SetupInputComponent()
 		// Camera Side Toggle
 		EIC->BindAction(IA_CameraSide, ETriggerEvent::Started, this, &AGanapatiMainPlayerController::HandleCameraSideToggle);
 
-		// Interact
+		// Interact once per press; Triggered would repeat while the key is held.
 		EIC->BindAction(IA_Interact, ETriggerEvent::Started, this, &AGanapatiMainPlayerController::HandleInteract);
-		EIC->BindAction(IA_Interact, ETriggerEvent::Triggered, this, &AGanapatiMainPlayerController::HandleInteract);
 
 		// Divine Shockwave (Q)
 		EIC->BindAction(IA_DivineShockwave, ETriggerEvent::Started, this, &AGanapatiMainPlayerController::HandleDivineShockwave);
